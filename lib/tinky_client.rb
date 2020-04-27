@@ -20,55 +20,55 @@ module TinkyClient
       @connection = Client.make_connection(ENV['TINKOFF_OPENAPI_URL'])
     end
 
-    def get_portfolio
+    def portfolio
       get_data('portfolio')
     end
 
-    private
-      def get_data(url)
-        request(:get, url)
+  private
+    def get_data(url)
+      request(:get, url)
+    end
+
+    def request(method, url, params = {})
+      response = connection.public_send(method, url, params)
+
+      if response.success?
+        response.body
+      else
+        handle_error(response)
       end
+    end
 
-      def request(method, url, params = {})
-        response = connection.public_send(method, url, params)
+    def handle_error(response)
+      raise(
+        ClientError,
+        "Tinkoff responded with HTTP #{response.status}: #{response.body.ai}"
+      )
+    end
 
-        if response.success?
-          response.body
-        else
-          handle_error(response)
-        end
-      end
-
-      def handle_error(response)
-        raise ClientError, "Tinkoff responded with HTTP #{response.status}: #{response.body.ai}"
-      end
-
-      class << self
-        def make_connection(url)
-          Faraday.new(url: url) do |builder|
-            builder.request  :json
-            builder.authorization :Bearer, ENV['TINKOFF_OPENAPI_TOKEN']
-            builder.response :oj, content_type: 'application/json'
-            builder.adapter  Faraday.default_adapter
-          end
+    class << self
+      def make_connection(url)
+        Faraday.new(url: url) do |builder|
+          builder.request :json
+          builder.authorization :Bearer, ENV['TINKOFF_OPENAPI_TOKEN']
+          builder.response :oj, content_type: 'application/json'
+          builder.adapter  Faraday.default_adapter
         end
       end
     end
+  end
 
   class ClientError < StandardError; end
 
   class << self
     def portfolio
       puts
-
-      summary = client.get_portfolio
-
-      table = TTY::Table.new(header: ['Type', 'Name', 'Amount', 'Yield'])
+      summary = client.portfolio
+      table = TTY::Table.new(header: %w[Type Name Amount Yield])
 
       summary.dig(:payload, :positions).each do |p|
         currency = CURRENCIES[p[:expectedYield][:currency].to_sym]
         decorated_yield = decorate_value(p[:expectedYield][:value], currency)
-
         table << [
           p[:instrumentType].upcase,
           decorate_name(p[:name]),
@@ -77,11 +77,12 @@ module TinkyClient
         ]
       end
 
-      puts table.render(:ascii, padding: [0,1,0,1])
+      puts table.render(:ascii, padding: [0, 1, 0, 1])
       puts
     end
 
   private
+
     def client
       @client ||= Client.new
     end
@@ -99,7 +100,7 @@ module TinkyClient
         :clear
       end
 
-      formatted_value = sprintf("%+d #{currency}", value)
+      formatted_value = format("%+.2f #{currency}", value)
       pastel.decorate(formatted_value, color)
     end
 

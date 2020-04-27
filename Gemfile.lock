@@ -1,6 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    ast (2.4.0)
     awesome_print (1.8.0)
     awesome_pry (0.0.1)
       awesome_print
@@ -16,10 +17,14 @@ GEM
       faraday (~> 0.9)
       faraday_middleware (>= 0.9.1, < 1.0)
       oj (>= 2.0, < 4.0)
+    jaro_winkler (1.5.4)
     method_source (1.0.0)
     multipart-post (2.1.1)
     necromancer (0.6.0)
     oj (3.10.6)
+    parallel (1.19.1)
+    parser (2.7.1.1)
+      ast (~> 2.4.0)
     pastel (0.7.3)
       equatable (~> 0.6)
       tty-color (~> 0.5)
@@ -28,6 +33,19 @@ GEM
       method_source (~> 1.0)
     pry-rails (0.3.9)
       pry (>= 0.10.4)
+    rainbow (3.0.0)
+    rexml (3.2.4)
+    rubocop (0.82.0)
+      jaro_winkler (~> 1.5.1)
+      parallel (~> 1.10)
+      parser (>= 2.7.0.1)
+      rainbow (>= 2.2.2, < 4.0)
+      rexml
+      ruby-progressbar (~> 1.7)
+      unicode-display_width (>= 1.4.0, < 2.0)
+    rubocop-performance (1.5.2)
+      rubocop (>= 0.71.0)
+    ruby-progressbar (1.10.1)
     strings (0.1.8)
       strings-ansi (~> 0.1)
       unicode-display_width (~> 1.5)
@@ -53,6 +71,8 @@ DEPENDENCIES
   faraday
   faraday_middleware
   faraday_middleware-parse_oj
+  rubocop
+  rubocop-performance
   tty-table
 
 BUNDLED WITH
