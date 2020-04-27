@@ -62,13 +62,11 @@ module TinkyClient
 
   class << self
     def portfolio
-      table = TTY::Table.new(header: %w[Type Name Amount Yield])
-
       portfolio_data.dig(:payload, :positions).each do |item|
-        table << row_data(item)
+        portfolio_table << row_data(item)
       end
 
-      puts table.render(:ascii, padding: [0, 1, 0, 1])
+      puts portfolio_table.render(:ascii, padding: [0, 1, 0, 1])
     end
 
   private
@@ -80,27 +78,33 @@ module TinkyClient
       @pastel ||= Pastel.new
     end
 
+    def portfolio_table
+      @portfolio_table ||= TTY::Table.new(
+        header: %w[Type Name Amount Price Yield]
+      )
+    end
+
     def portfolio_data
       client.portfolio
     end
 
-    def portfolio_table
-      TTY::Table.new(header: %w[Type Name Amount Yield])
-    end
-
     def row_data(item)
-      currency = CURRENCIES[item[:expectedYield][:currency].to_sym]
-      decorated_yield = decorate_value(item[:expectedYield][:value], currency)
-
       [
         item[:instrumentType].upcase,
         decorate_name(item[:name]),
         { value: decorate_amount(item[:balance]), alignment: :right },
-        { value: decorated_yield, alignment: :right }
+        {
+          value:     decorate_price(item[:averagePositionPrice]),
+          alignment: :right
+        },
+        { value: decorate_yield(item[:expectedYield]), alignment: :right }
       ]
     end
 
-    def decorate_value(value, currency)
+    def decorate_yield(expected_yield)
+      value = expected_yield[:value]
+      currency = CURRENCIES[expected_yield[:currency].to_sym]
+
       color = if value.positive?
         :green
       elsif value.negative?
@@ -129,6 +133,11 @@ module TinkyClient
       end
 
       pastel.bold(stripped_name)
+    end
+
+    def decorate_price(price)
+      currency = CURRENCIES[price[:currency].to_sym]
+      format("%.2f #{currency}", price[:value])
     end
   end
 end
