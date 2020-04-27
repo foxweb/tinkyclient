@@ -62,33 +62,42 @@ module TinkyClient
 
   class << self
     def portfolio
-      puts
-      summary = client.portfolio
       table = TTY::Table.new(header: %w[Type Name Amount Yield])
 
-      summary.dig(:payload, :positions).each do |p|
-        currency = CURRENCIES[p[:expectedYield][:currency].to_sym]
-        decorated_yield = decorate_value(p[:expectedYield][:value], currency)
-        table << [
-          p[:instrumentType].upcase,
-          decorate_name(p[:name]),
-          { value: decorate_amount(p[:balance]), alignment: :right },
-          { value: decorated_yield, alignment: :right }
-        ]
+      portfolio_data.dig(:payload, :positions).each do |item|
+        table << row_data(item)
       end
 
       puts table.render(:ascii, padding: [0, 1, 0, 1])
-      puts
     end
 
   private
-
     def client
       @client ||= Client.new
     end
 
     def pastel
       @pastel ||= Pastel.new
+    end
+
+    def portfolio_data
+      client.portfolio
+    end
+
+    def portfolio_table
+      TTY::Table.new(header: %w[Type Name Amount Yield])
+    end
+
+    def row_data(item)
+      currency = CURRENCIES[item[:expectedYield][:currency].to_sym]
+      decorated_yield = decorate_value(item[:expectedYield][:value], currency)
+
+      [
+        item[:instrumentType].upcase,
+        decorate_name(item[:name]),
+        { value: decorate_amount(item[:balance]), alignment: :right },
+        { value: decorated_yield, alignment: :right }
+      ]
     end
 
     def decorate_value(value, currency)
