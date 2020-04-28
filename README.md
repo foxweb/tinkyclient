@@ -1,3 +1,5 @@
+![Rubocop](https://github.com/foxweb/tinkyclient/workflows/Rubocop/badge.svg)
+
 # TinkyClient — tiny client for Tinkoff OpenAPI
 
 Предлагаю вашему вниманию небольшой консольный Ruby-клиент для доступа к брокерскому аккаунту Тинькофф Инвестиции.
