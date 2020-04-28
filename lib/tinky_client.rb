@@ -24,6 +24,10 @@ module TinkyClient
       get_data('portfolio')
     end
 
+    def portfolio_currencies
+      get_data('portfolio/currencies')
+    end
+
   private
     def get_data(url)
       request(:get, url)
@@ -76,6 +80,22 @@ module TinkyClient
       print_timestamp
     end
 
+    def portfolio_currencies
+      items = client.portfolio_currencies.dig(:payload, :currencies)
+
+      table = TTY::Table.new(header: %w[Currencies])
+
+      items.each do |item|
+        currency = CURRENCIES[item[:currency].to_sym]
+        formatted_value = format('%.2f %s', item[:balance], currency)
+
+        table << [{ value: formatted_value, alignment: :right }]
+      end
+
+      puts table.render(:ascii, padding: [0, 1, 0, 1])
+      print_timestamp
+    end
+
   private
     def client
       @client ||= Client.new
@@ -113,7 +133,7 @@ module TinkyClient
       value = expected_yield[:value]
       currency = CURRENCIES[expected_yield[:currency].to_sym]
 
-      formatted_value = format("%+.2f #{currency}", value)
+      formatted_value = format('%+.2f %s', value, currency)
       pastel.decorate(formatted_value, yield_color(value))
     end
 
