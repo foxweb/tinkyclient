@@ -62,11 +62,18 @@ module TinkyClient
 
   class << self
     def portfolio
-      portfolio_data.dig(:payload, :positions).each do |item|
+      positions = portfolio_data.dig(:payload, :positions)
+
+      prev_type = positions.first[:instrumentType]
+
+      positions.each do |item|
+        # portfolio_table << :separator if item[:instrumentType] != prev_type
         portfolio_table << row_data(item)
+        prev_type = item[:instrumentType]
       end
 
       puts portfolio_table.render(:ascii, padding: [0, 1, 0, 1])
+      print_timestamp
     end
 
   private
@@ -149,6 +156,10 @@ module TinkyClient
     def decorate_price(price)
       currency = CURRENCIES[price[:currency].to_sym]
       format('%.2f %s', price[:value], currency)
+    end
+
+    def print_timestamp
+      puts "Last updated: #{Time.now}"
     end
   end
 end
