@@ -80,7 +80,7 @@ module TinkyClient
 
     def portfolio_table
       @portfolio_table ||= TTY::Table.new(
-        header: %w[Type Name Amount Price Yield]
+        header: %w[Type Name Amount Price Yield Yield%]
       )
     end
 
@@ -97,7 +97,8 @@ module TinkyClient
           value:     decorate_price(item[:averagePositionPrice]),
           alignment: :right
         },
-        { value: decorate_yield(item[:expectedYield]), alignment: :right }
+        { value: decorate_yield(item[:expectedYield]), alignment: :right },
+        { value: decorate_yield_percent(item), alignment: :right }
       ]
     end
 
@@ -105,16 +106,26 @@ module TinkyClient
       value = expected_yield[:value]
       currency = CURRENCIES[expected_yield[:currency].to_sym]
 
-      color = if value.positive?
+      formatted_value = format("%+.2f #{currency}", value)
+      pastel.decorate(formatted_value, yield_color(value))
+    end
+
+    def decorate_yield_percent(item)
+      value = item.dig(:expectedYield, :value) / (item.dig(:averagePositionPrice, :value) * item[:balance]) * 100
+      currency = CURRENCIES[item.dig(:expectedYield, :currency).to_sym]
+
+      formatted_value = format("%+.2f%%", value)
+      pastel.decorate(formatted_value, yield_color(value))
+    end
+
+    def yield_color(value)
+      if value.positive?
         :green
       elsif value.negative?
         :red
       else
         :clear
       end
-
-      formatted_value = format("%+.2f #{currency}", value)
-      pastel.decorate(formatted_value, color)
     end
 
     def decorate_amount(amount)
