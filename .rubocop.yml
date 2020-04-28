@@ -92,3 +92,6 @@ Lint/StructNewOverride:
 Style/ExponentialNotation:
   Enabled: true
 
+Style/FormatStringToken:
+  Enabled: false
+
