@@ -111,10 +111,10 @@ module TinkyClient
     end
 
     def decorate_yield_percent(item)
-      total = item.dig(:averagePositionPrice, :value) * item[:balance]
-      value = item.dig(:expectedYield, :value) / total * 100
+      total = item.dig(:averagePositionPrice, :value).to_f * item[:balance]
+      value = item.dig(:expectedYield, :value).to_f / total * 100
 
-      formatted_value = format('%+.2f %%', value)
+      formatted_value = format('%+.2f %%', value.round(2))
       pastel.decorate(formatted_value, yield_color(value))
     end
 
