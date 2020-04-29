@@ -109,39 +109,39 @@ module TinkyClient
         h[k] = { price: 0, yield: 0, total: 0 }
       end
 
-      summary = positions.each_with_object(total) do |item, result|
+      positions.each_with_object(total) do |item, result|
         currency = item.dig(:averagePositionPrice, :currency).to_sym
-        price = item.dig(:averagePositionPrice, :value).to_d * item[:balance].to_d
+        avg_price = item.dig(:averagePositionPrice, :value).to_d
+        price = avg_price * item[:balance].to_d
         expected_yield = item.dig(:expectedYield, :value).to_d
 
         result[currency][:price] += price
         result[currency][:yield] += expected_yield
         result[currency][:total] += price + expected_yield
       end
-
-      puts summary
     end
 
     def exchange_rates
       positions = portfolio_data.dig(:payload, :positions)
 
+      # select only currencies positions (wallet)
       currencies = positions.select do |position|
         position[:instrumentType] == 'Currency'
       end
 
-      rates = currencies.map do |c|
-        balance = c[:balance].to_d # количество валюты в €, $
-        sum = c[:averagePositionPrice][:value].to_d * balance # цена покупки ₽
-        expected_yield = c[:expectedYield][:value].to_d # профит в ₽
-        total = sum + expected_yield # цена покупки + профит в ₽
-        rate = (total / balance).round(4) # курс валюты в ₽
+      # calculate exchange rate in RUB by currency
+      currencies.reduce({}) do |result, c|
+        balance = c[:balance].to_d # currency amount in EUR, USD
+        sum = c.dig(:averagePositionPrice, :value).to_d * balance # avg. price RUB
+        expected_yield = c.dig(:expectedYield, :value).to_d # profit in RUB
+        total = sum + expected_yield # avg. buy price + profit in RUB
+        rate = (total / balance).round(4) # exchange rate in RUB
 
-        currency = CURRENCIES.select { |_k, v| v[:ticker] == c[:ticker] }.keys.first
+        # get currency code by ticker
+        currency = currency_by_ticker(c[:ticker])
 
-        { currency => rate }
+        result.merge(currency => rate)
       end
-
-      puts rates
     end
 
   private
@@ -228,6 +228,10 @@ module TinkyClient
 
     def print_timestamp
       puts "Last updated: #{Time.now}"
+    end
+
+    def currency_by_ticker(ticker)
+      CURRENCIES.select { |_, v| v[:ticker] == ticker }.keys.first
     end
   end
 end
