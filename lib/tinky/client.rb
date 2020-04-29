@@ -1,3 +1,7 @@
+require 'faraday'
+require 'faraday_middleware'
+require 'faraday_middleware/parse_oj'
+
 module Tinky
   class Client
     attr_reader :connection

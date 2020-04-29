@@ -3,10 +3,6 @@ require './config/oj'
 
 require 'bigdecimal/util'
 
-require 'faraday'
-require 'faraday_middleware'
-require 'faraday_middleware/parse_oj'
-
 require 'tty/table'
 
 require 'pry'
