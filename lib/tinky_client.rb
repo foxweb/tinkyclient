@@ -1,6 +1,8 @@
 require './config/dotenv'
 require './config/oj'
 
+require 'bigdecimal/util'
+
 require 'faraday'
 require 'faraday_middleware'
 require 'faraday_middleware/parse_oj'
@@ -11,7 +13,11 @@ require 'pry'
 require 'awesome_print'
 
 module TinkyClient
-  CURRENCIES = { RUB: '₽', USD: '$', EUR: '€' }.freeze
+  CURRENCIES = {
+    RUB: { symbol: '₽', ticker: nil },
+    USD: { symbol: '$', ticker: 'USD000UTSTOM' },
+    EUR: { symbol: '€', ticker: 'EUR_RUB__TOM' }
+  }.freeze
 
   class Client
     attr_reader :connection
@@ -80,20 +86,62 @@ module TinkyClient
       print_timestamp
     end
 
-    def portfolio_currencies
+    def wallet
       items = client.portfolio_currencies.dig(:payload, :currencies)
 
       table = TTY::Table.new(header: %w[Currencies])
 
       items.each do |item|
         currency = CURRENCIES[item[:currency].to_sym]
-        formatted_value = format('%.2f %s', item[:balance], currency)
+        formatted_value = format('%.2f %s', item[:balance], currency[:symbol])
 
         table << [{ value: formatted_value, alignment: :right }]
       end
 
       puts table.render(:ascii, padding: [0, 1, 0, 1])
       print_timestamp
+    end
+
+    def total_amount
+      positions = portfolio_data.dig(:payload, :positions)
+
+      total = Hash.new do |h, k|
+        h[k] = { price: 0, yield: 0, total: 0 }
+      end
+
+      summary = positions.each_with_object(total) do |item, result|
+        currency = item.dig(:averagePositionPrice, :currency).to_sym
+        price = item.dig(:averagePositionPrice, :value).to_d * item[:balance].to_d
+        expected_yield = item.dig(:expectedYield, :value).to_d
+
+        result[currency][:price] += price
+        result[currency][:yield] += expected_yield
+        result[currency][:total] += price + expected_yield
+      end
+
+      puts summary
+    end
+
+    def exchange_rates
+      positions = portfolio_data.dig(:payload, :positions)
+
+      currencies = positions.select do |position|
+        position[:instrumentType] == 'Currency'
+      end
+
+      rates = currencies.map do |c|
+        balance = c[:balance].to_d # количество валюты в €, $
+        sum = c[:averagePositionPrice][:value].to_d * balance # цена покупки ₽
+        expected_yield = c[:expectedYield][:value].to_d # профит в ₽
+        total = sum + expected_yield # цена покупки + профит в ₽
+        rate = (total / balance).round(4) # курс валюты в ₽
+
+        currency = CURRENCIES.select { |_k, v| v[:ticker] == c[:ticker] }.keys.first
+
+        { currency => rate }
+      end
+
+      puts rates
     end
 
   private
@@ -133,7 +181,7 @@ module TinkyClient
       value = expected_yield[:value]
       currency = CURRENCIES[expected_yield[:currency].to_sym]
 
-      formatted_value = format('%+.2f %s', value, currency)
+      formatted_value = format('%+.2f %s', value, currency[:symbol])
       pastel.decorate(formatted_value, yield_color(value))
     end
 
@@ -175,7 +223,7 @@ module TinkyClient
 
     def decorate_price(price)
       currency = CURRENCIES[price[:currency].to_sym]
-      format('%.2f %s', price[:value], currency)
+      format('%.2f %s', price[:value], currency[:symbol])
     end
 
     def print_timestamp
