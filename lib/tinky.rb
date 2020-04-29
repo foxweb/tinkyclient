@@ -12,77 +12,30 @@ require 'tty/table'
 require 'pry'
 require 'awesome_print'
 
-module TinkyClient
+require './lib/tinky/client'
+require './lib/tinky/client_error'
+
+module Tinky
   CURRENCIES = {
     RUB: { symbol: '₽', ticker: nil },
     USD: { symbol: '$', ticker: 'USD000UTSTOM' },
     EUR: { symbol: '€', ticker: 'EUR_RUB__TOM' }
   }.freeze
 
-  class Client
-    attr_reader :connection
-
-    def initialize
-      @connection = Client.make_connection(ENV['TINKOFF_OPENAPI_URL'])
-    end
-
-    def portfolio
-      get_data('portfolio')
-    end
-
-    def portfolio_currencies
-      get_data('portfolio/currencies')
-    end
-
-  private
-    def get_data(url)
-      request(:get, url)
-    end
-
-    def request(method, url, params = {})
-      response = connection.public_send(method, url, params)
-
-      if response.success?
-        response.body
-      else
-        handle_error(response)
-      end
-    end
-
-    def handle_error(response)
-      raise(
-        ClientError,
-        "Tinkoff responded with HTTP #{response.status}: #{response.body.ai}"
-      )
-    end
-
-    class << self
-      def make_connection(url)
-        Faraday.new(url: url) do |builder|
-          builder.request :json
-          builder.authorization :Bearer, ENV['TINKOFF_OPENAPI_TOKEN']
-          builder.response :oj, content_type: 'application/json'
-          builder.adapter  Faraday.default_adapter
-        end
-      end
-    end
-  end
-
-  class ClientError < StandardError; end
-
   class << self
     def portfolio
-      positions = portfolio_data.dig(:payload, :positions)
+      items = positions
+      prev_type = items.first[:instrumentType]
 
-      prev_type = positions.first[:instrumentType]
+      table = portfolio_table
 
-      positions.each do |item|
-        # portfolio_table << :separator if item[:instrumentType] != prev_type
-        portfolio_table << row_data(item)
+      items.each do |item|
+        table << :separator if item[:instrumentType] != prev_type
+        table << row_data(item)
         prev_type = item[:instrumentType]
       end
 
-      puts portfolio_table.render(:ascii, padding: [0, 1, 0, 1])
+      puts table.render(:ascii, padding: [0, 1, 0, 1])
       print_timestamp
     end
 
@@ -102,9 +55,8 @@ module TinkyClient
       print_timestamp
     end
 
+    # rubocop:disable Metrics/AbcSize
     def total_amount
-      positions = portfolio_data.dig(:payload, :positions)
-
       total = Hash.new do |h, k|
         h[k] = { price: 0, yield: 0, total: 0 }
       end
@@ -120,19 +72,14 @@ module TinkyClient
         result[currency][:total] += price + expected_yield
       end
     end
+    # rubocop:enable Metrics/AbcSize
 
     def exchange_rates
-      positions = portfolio_data.dig(:payload, :positions)
-
-      # select only currencies positions (wallet)
-      currencies = positions.select do |position|
-        position[:instrumentType] == 'Currency'
-      end
-
       # calculate exchange rate in RUB by currency
       currencies.reduce({}) do |result, c|
         balance = c[:balance].to_d # currency amount in EUR, USD
-        sum = c.dig(:averagePositionPrice, :value).to_d * balance # avg. price RUB
+        avg_price = c.dig(:averagePositionPrice, :value).to_d # price inRUB
+        sum = avg_price * balance # sum in RUB
         expected_yield = c.dig(:expectedYield, :value).to_d # profit in RUB
         total = sum + expected_yield # avg. buy price + profit in RUB
         rate = (total / balance).round(4) # exchange rate in RUB
@@ -146,17 +93,15 @@ module TinkyClient
 
   private
     def client
-      @client ||= Client.new
+      Client.new
     end
 
     def pastel
-      @pastel ||= Pastel.new
+      Pastel.new
     end
 
     def portfolio_table
-      @portfolio_table ||= TTY::Table.new(
-        header: %w[Type Name Amount Avg.\ price Yield Yield\ %]
-      )
+      TTY::Table.new(header: %w[Type Name Amount Avg.\ price Yield Yield\ %])
     end
 
     def portfolio_data
@@ -186,8 +131,8 @@ module TinkyClient
     end
 
     def decorate_yield_percent(item)
-      total = item.dig(:averagePositionPrice, :value).to_f * item[:balance]
-      value = item.dig(:expectedYield, :value).to_f / total * 100
+      total = item.dig(:averagePositionPrice, :value).to_d * item[:balance].to_d
+      value = item.dig(:expectedYield, :value).to_d / total.to_d * 100
 
       formatted_value = format('%+.2f %%', value.round(2))
       pastel.decorate(formatted_value, yield_color(value))
@@ -232,6 +177,17 @@ module TinkyClient
 
     def currency_by_ticker(ticker)
       CURRENCIES.select { |_, v| v[:ticker] == ticker }.keys.first
+    end
+
+    def positions
+      portfolio_data.dig(:payload, :positions)
+    end
+
+    # select only currencies positions (wallet)
+    def currencies
+      positions.select do |position|
+        position[:instrumentType] == 'Currency'
+      end
     end
   end
 end
