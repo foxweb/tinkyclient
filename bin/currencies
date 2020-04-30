@@ -1,3 +1,0 @@
-#!/usr/bin/env ruby
-require_relative '../lib/tinky_client'
-TinkyClient.portfolio_currencies
