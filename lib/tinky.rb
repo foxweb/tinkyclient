@@ -46,7 +46,12 @@ module Tinky
         currency = CURRENCIES[item[:currency].to_sym]
         formatted_value = format('%.2f %s', item[:balance], currency[:symbol])
 
-        table << [{ value: formatted_value, alignment: :right }]
+        table << [
+          {
+            value:     pastel.bold(formatted_value),
+            alignment: :right
+          }
+        ]
       end
 
       puts table.render(:ascii, padding: [0, 1, 0, 1])
