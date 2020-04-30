@@ -11,7 +11,7 @@ require 'awesome_print'
 require './lib/tinky/client'
 require './lib/tinky/client_error'
 
-module Tinky
+module Tinky # rubocop:disable Metrics/ModuleLength
   CURRENCIES = {
     RUB: { symbol: '₽', ticker: nil },
     USD: { symbol: '$', ticker: 'USD000UTSTOM' },
