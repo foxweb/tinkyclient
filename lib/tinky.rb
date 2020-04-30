@@ -21,9 +21,34 @@ module Tinky
   class << self
     def portfolio
       items = positions
+
+      puts "\n\nPortfolio:"
+      puts portfolio_table(items)
+
+      puts "\n\nTotal amount summary:"
+
+      rates = exchange_rates(items)
+      summary_data = full_summary(items, rates).values
+      puts summary_table(summary_data)
+
+      print_timestamp
+    end
+
+    def wallet
+      items = client.portfolio_currencies.dig(:payload, :currencies)
+
+      puts "\n\nWallet:"
+      puts wallet_table(items)
+
+      print_timestamp
+    end
+
+    def portfolio_table(items)
       prev_type = items.first[:instrumentType]
 
-      table = portfolio_table
+      table = TTY::Table.new(
+        header: %w[Type Name Amount Avg.\ price Yield Yield\ %]
+      )
 
       items.each do |item|
         # table << :separator if item[:instrumentType] != prev_type
@@ -31,15 +56,10 @@ module Tinky
         prev_type = item[:instrumentType]
       end
 
-      puts table.render(:ascii, padding: [0, 1, 0, 1])
-      puts "\n\nTotal amount summary:"
-      puts summary_table(summary(items).values)
-      print_timestamp
+      table.render(:ascii, padding: [0, 1, 0, 1])
     end
 
-    def wallet
-      items = client.portfolio_currencies.dig(:payload, :currencies)
-
+    def wallet_table(items)
       table = TTY::Table.new(header: %w[Currencies])
 
       items.each do |item|
@@ -54,8 +74,7 @@ module Tinky
         ]
       end
 
-      puts table.render(:ascii, padding: [0, 1, 0, 1])
-      print_timestamp
+      table.render(:ascii, padding: [0, 1, 0, 1])
     end
 
     # rubocop:disable Metrics/AbcSize
@@ -94,18 +113,25 @@ module Tinky
       end
     end
 
-    def summary(positions)
-      rates = exchange_rates(positions)
+    def summary(items, rates)
+      total = Hash.new { |h, k| h[k] = [0, '₽'] }
 
-      total = Hash.new { |h, k| h[k] = 0 }
-
-      total_amount(positions).each_with_object(total) do |(key, value), memo|
+      total_amount(items).each_with_object(total) do |(key, value), memo|
         rate = rates.fetch(key, 1)
 
-        memo[:price] += value[:price] * rate
-        memo[:yield] += value[:yield] * rate
-        memo[:total] += value[:total] * rate
+        memo[:price][0] += value[:price] * rate
+        memo[:yield][0] += value[:yield] * rate
+        memo[:total][0] += value[:total] * rate
       end
+    end
+
+    def full_summary(items, rates)
+      result = summary(items, rates)
+
+      result.merge(
+        yield_percent:  [result[:yield][0] / result[:price][0] * 100, '%'],
+        total_with_rub: [result[:total][0] + rub_balance, '₽']
+      )
     end
 
   private
@@ -115,10 +141,6 @@ module Tinky
 
     def pastel
       Pastel.new
-    end
-
-    def portfolio_table
-      TTY::Table.new(header: %w[Type Name Amount Avg.\ price Yield Yield\ %])
     end
 
     def portfolio_data
@@ -189,7 +211,7 @@ module Tinky
     end
 
     def print_timestamp
-      puts "Last updated: #{Time.now}"
+      puts "\nLast updated: #{Time.now}\n\n"
     end
 
     def currency_by_ticker(ticker)
@@ -209,19 +231,33 @@ module Tinky
 
     def decorate_summary(items)
       items.map do |item|
+        value = format('%+.2f %s', item[0].to_f.round(2), item[1])
         {
-          value:     pastel.decorate(
-            format('%+.2f ₽', item.to_f.round(2)), yield_color(item), :bold
-          ),
+          value:     pastel.decorate(value, yield_color(item[0]), :bold),
           alignment: :right
         }
       end
     end
 
-    def summary_table(values)
-      table = TTY::Table.new(header: %w[Avg.\ buy\ price Yield Total])
-      table << decorate_summary(values)
+    def summary_table(items)
+      table = TTY::Table.new(
+        header: [
+          'Total Purchases',
+          'Expected Yield',
+          'Expected Total',
+          'Yield %',
+          'Total + RUB balance'
+        ]
+      )
+      table << decorate_summary(items)
       table.render(:ascii, padding: [0, 1, 0, 1])
+    end
+
+    def rub_balance
+      client
+        .portfolio_currencies
+        .dig(:payload, :currencies)
+        .find { |i| i[:currency] == 'RUB' }[:balance].to_d
     end
   end
 end
