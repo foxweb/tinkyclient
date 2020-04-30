@@ -26,12 +26,14 @@ module Tinky
       table = portfolio_table
 
       items.each do |item|
-        table << :separator if item[:instrumentType] != prev_type
+        # table << :separator if item[:instrumentType] != prev_type
         table << row_data(item)
         prev_type = item[:instrumentType]
       end
 
       puts table.render(:ascii, padding: [0, 1, 0, 1])
+      puts "\n\nTotal amount summary:"
+      puts summary_table(summary(items).values)
       print_timestamp
     end
 
@@ -52,7 +54,7 @@ module Tinky
     end
 
     # rubocop:disable Metrics/AbcSize
-    def total_amount
+    def total_amount(positions)
       total = Hash.new do |h, k|
         h[k] = { price: 0, yield: 0, total: 0 }
       end
@@ -70,9 +72,9 @@ module Tinky
     end
     # rubocop:enable Metrics/AbcSize
 
-    def exchange_rates
+    def exchange_rates(positions)
       # calculate exchange rate in RUB by currency
-      currencies.reduce({}) do |result, c|
+      currencies(positions).reduce({}) do |result, c|
         balance = c[:balance].to_d # currency amount in EUR, USD
         avg_price = c.dig(:averagePositionPrice, :value).to_d # price inRUB
         sum = avg_price * balance # sum in RUB
@@ -84,6 +86,20 @@ module Tinky
         currency = currency_by_ticker(c[:ticker])
 
         result.merge(currency => rate)
+      end
+    end
+
+    def summary(positions)
+      rates = exchange_rates(positions)
+
+      total = Hash.new { |h, k| h[k] = 0 }
+
+      total_amount(positions).each_with_object(total) do |item, memo|
+        rate = rates[item.first] || 1
+
+        memo[:price] += item[1][:price] * rate
+        memo[:yield] += item[1][:yield] * rate
+        memo[:total] += item[1][:total] * rate
       end
     end
 
@@ -180,10 +196,27 @@ module Tinky
     end
 
     # select only currencies positions (wallet)
-    def currencies
+    def currencies(positions)
       positions.select do |position|
         position[:instrumentType] == 'Currency'
       end
+    end
+
+    def decorate_summary(items)
+      items.map do |item|
+        {
+          value:     pastel.decorate(
+            format('%+.2f ₽', item.to_f.round(2)), yield_color(item), :bold
+          ),
+          alignment: :right
+        }
+      end
+    end
+
+    def summary_table(values)
+      table = TTY::Table.new(header: %w[Avg.\ buy\ price Yield Total])
+      table << decorate_summary(values)
+      table.render(:ascii, padding: [0, 1, 0, 1])
     end
   end
 end
