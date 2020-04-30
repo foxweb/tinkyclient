@@ -94,12 +94,12 @@ module Tinky
 
       total = Hash.new { |h, k| h[k] = 0 }
 
-      total_amount(positions).each_with_object(total) do |item, memo|
-        rate = rates[item.first] || 1
+      total_amount(positions).each_with_object(total) do |(key, value), memo|
+        rate = rates.fetch(key, 1)
 
-        memo[:price] += item[1][:price] * rate
-        memo[:yield] += item[1][:yield] * rate
-        memo[:total] += item[1][:total] * rate
+        memo[:price] += value[:price] * rate
+        memo[:yield] += value[:yield] * rate
+        memo[:total] += value[:total] * rate
       end
     end
 
