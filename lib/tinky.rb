@@ -22,10 +22,10 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     def portfolio
       items = positions
 
-      puts "\n\nPortfolio:"
+      puts "\nPortfolio:"
       puts portfolio_table(items)
 
-      puts "\n\nTotal amount summary:"
+      puts "\nTotal amount summary:"
 
       rates = exchange_rates(items)
       summary_data = full_summary(items, rates).values
@@ -37,7 +37,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     def wallet
       items = client.portfolio_currencies.dig(:payload, :currencies)
 
-      puts "\n\nWallet:"
+      puts "\nWallet:"
       puts wallet_table(items)
 
       print_timestamp
@@ -56,7 +56,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         prev_type = item[:instrumentType]
       end
 
-      table.render(:ascii, padding: [0, 1, 0, 1])
+      table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
     def wallet_table(items)
@@ -74,7 +74,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         ]
       end
 
-      table.render(:ascii, padding: [0, 1, 0, 1])
+      table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
     # rubocop:disable Metrics/AbcSize
@@ -250,7 +250,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         ]
       )
       table << decorate_summary(items)
-      table.render(:ascii, padding: [0, 1, 0, 1])
+      table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
     def rub_balance
