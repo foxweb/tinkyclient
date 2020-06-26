@@ -47,7 +47,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       prev_type = items.first[:instrumentType]
 
       table = TTY::Table.new(
-        header: %w[Type Name Amount Avg.\ price Yield Yield\ %]
+        header: %w[Type Name Amount Avg.\ buy Current\ price Yield Yield\ %]
       )
 
       items.each do |item|
@@ -147,6 +147,17 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       client.portfolio
     end
 
+    def sell_price(item)
+      balance = item[:balance].to_d
+      avg_buy_price = item[:averagePositionPrice][:value].to_d
+      expected_yield = item[:expectedYield][:value].to_d
+
+      {
+        value:    ((balance * avg_buy_price) + expected_yield) / balance,
+        currency: item[:averagePositionPrice][:currency]
+      }
+    end
+
     def row_data(item)
       [
         item[:instrumentType].upcase,
@@ -154,6 +165,10 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         { value: decorate_amount(item[:balance]), alignment: :right },
         {
           value:     decorate_price(item[:averagePositionPrice]),
+          alignment: :right
+        },
+        {
+          value:     decorate_price(sell_price(item)),
           alignment: :right
         },
         { value: decorate_yield(item[:expectedYield]), alignment: :right },
