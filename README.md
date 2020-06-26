@@ -67,8 +67,8 @@ $ bin/console
 ```sh
 pry(Tinky)> portfolio
 pry(Tinky)> wallet
-pry(Tinky)> exchange_rates
-pry(Tinky)> total_amount
+pry(Tinky)> exchange_rates(positions)
+pry(Tinky)> total_amount(positions)
 ```
 
 # Уведомление о защите персональных данных
