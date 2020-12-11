@@ -1,6 +1,8 @@
 require:
   - rubocop-performance
-  # - rubocop-rspec
+
+AllCops:
+  NewCops: enable
 
 Style/FrozenStringLiteralComment:
   EnforcedStyle: never
@@ -30,14 +32,6 @@ Style/Documentation:
 
 Layout/LineLength:
   Max: 80
-
-Metrics/BlockLength:
-  ExcludedMethods:
-    - DbSchema.describe
-    - db.table
-    - db.migrate
-    - migration.run
-    - Sequel.connect
 
 Metrics/MethodLength:
   Max: 15
@@ -94,4 +88,3 @@ Style/ExponentialNotation:
 
 Style/FormatStringToken:
   Enabled: false
-

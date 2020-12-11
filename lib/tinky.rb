@@ -113,7 +113,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       end
     end
 
-    def summary(items, rates)
+    def summary(items, rates) # rubocop:disable Metrics/AbcSize
       total = Hash.new { |h, k| h[k] = [0, '₽'] }
 
       total_amount(items).each_with_object(total) do |(key, value), memo|
@@ -212,7 +212,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def decorate_name(name)
       stripped_name = if name.length > 29
-        name[0..28] + '…'
+        "#{name[0..28]}…"
       else
         name
       end
