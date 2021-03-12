@@ -34,6 +34,34 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       print_timestamp
     end
 
+    def watch_portfolio
+      print `tput smcup`
+
+      loop do
+        items = positions
+
+        print `clear`
+
+        puts 'Portfolio:'
+        puts portfolio_table(items)
+        puts
+
+        puts 'Total amount summary:'
+
+        rates = exchange_rates(items)
+        summary_data = full_summary(items, rates).values
+        puts summary_table(summary_data)
+
+        print_timestamp
+
+        sleep 2
+      end
+    end
+
+    def restore_tty
+      print `tput rmcup`
+    end
+
     def wallet
       items = client.portfolio_currencies.dig(:payload, :currencies)
 
@@ -275,4 +303,14 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         .find { |i| i[:currency] == 'RUB' }[:balance].to_d
     end
   end
+end
+
+Signal.trap('INT') do
+  Tinky.restore_tty
+  exit
+end
+
+Signal.trap('TERM') do
+  Tinky.restore_tty
+  exit
 end
