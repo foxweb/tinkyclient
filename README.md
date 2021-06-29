@@ -75,8 +75,19 @@ pry(Tinky)> total_amount(positions)
 
 Не очень понимаю, зачем кому-то может понадобиться запускать утилиту в Docker, но пусть будет.
 
+1. Если вы храните токен в `.env.local`:
 ```sh
-$ docker run foxweb/tinkyclient
+$ docker run --env-file .env.local -t foxweb/tinkyclient
+```
+
+2. Если хотите каждый раз передавать токен напрямую в контейнер:
+```sh
+$ docker run -e TINKOFF_OPENAPI_TOKEN=ваш_токен -t foxweb/tinkyclient
+```
+
+3. Если хотите каждый раз передавать токен из локального окружения в контейнер:
+```sh
+$ docker run -e TINKOFF_OPENAPI_TOKEN=$TINKOFF_OPENAPI_TOKEN -t foxweb/tinkyclient
 ```
 
 ## Постоянное обновление портфолио
