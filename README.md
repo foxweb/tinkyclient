@@ -76,8 +76,7 @@ pry(Tinky)> total_amount(positions)
 Не очень понимаю, зачем кому-то может понадобиться запускать утилиту в Docker, но пусть будет.
 
 ```sh
-$ docker build -t tinkyclient .
-$ docker-compose up
+$ docker run foxweb/tinkyclient
 ```
 
 ## Постоянное обновление портфолио
