@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  client:
+    tty: true
+    image: tinkyclient:latest
+    volumes:
+      - .:/opt/app
+    container_name: tinkyclient
+    build: .
+    stdin_open: true
+    working_dir: /opt/app
+    command: bin/portfolio
