@@ -105,8 +105,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
-    # rubocop:disable Metrics/AbcSize
-    def total_amount(positions)
+    def total_amount(positions) # rubocop:disable Metrics/AbcSize
       total = Hash.new do |h, k|
         h[k] = { price: 0, yield: 0, total: 0 }
       end
@@ -122,23 +121,28 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         result[currency][:total] += price + expected_yield
       end
     end
-    # rubocop:enable Metrics/AbcSize
 
     def exchange_rates(positions)
       # calculate exchange rate in RUB by currency
       currencies(positions).reduce({}) do |result, c|
-        balance = c[:balance].to_d # currency amount in EUR, USD
-        avg_price = c.dig(:averagePositionPrice, :value).to_d # price inRUB
-        sum = avg_price * balance # sum in RUB
-        expected_yield = c.dig(:expectedYield, :value).to_d # profit in RUB
-        total = sum + expected_yield # avg. buy price + profit in RUB
-        rate = (total / balance).round(4) # exchange rate in RUB
+        last_currency_candle = client.market_candles(candles_params(c[:figi]))
+        rate = last_currency_candle.dig(:payload, :candles).last[:c]
 
         # get currency code by ticker
         currency = currency_by_ticker(c[:ticker])
 
         result.merge(currency => rate)
       end
+    end
+
+    def candles_params(figi)
+      current_time = Time.now
+      {
+        figi:     figi,
+        from:     (current_time - 120).iso8601,
+        to:       current_time.iso8601,
+        interval: '1min'
+      }
     end
 
     def summary(items, rates) # rubocop:disable Metrics/AbcSize

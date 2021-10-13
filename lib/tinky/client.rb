@@ -18,9 +18,13 @@ module Tinky
       get_data('portfolio/currencies')
     end
 
+    def market_candles(params = {})
+      get_data('market/candles', params)
+    end
+
   private
-    def get_data(url)
-      request(:get, url)
+    def get_data(url, params = {})
+      request(:get, url, params)
     end
 
     def request(method, url, params = {})
