@@ -75,7 +75,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       prev_type = items.first[:instrumentType]
 
       table = TTY::Table.new(
-        header: %w[Type Name Amount Avg.\ buy Current\ price Yield Yield\ %]
+        header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price',
+                 'Yield', 'Yield %']
       )
 
       items.each do |item|
