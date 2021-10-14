@@ -140,9 +140,9 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       current_time = Time.now
       {
         figi:     figi,
-        from:     (current_time - 200).iso8601,
+        from:     (current_time - (24 * 3600 * 3)).iso8601,
         to:       current_time.iso8601,
-        interval: '1min'
+        interval: 'hour'
       }
     end
 
