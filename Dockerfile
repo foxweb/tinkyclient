@@ -1,4 +1,4 @@
-FROM ruby:3.0.2
+FROM ruby:3.1.0
 
 WORKDIR /opt/app
 COPY Gemfile* ./

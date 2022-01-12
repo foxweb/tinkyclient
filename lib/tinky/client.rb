@@ -46,7 +46,7 @@ module Tinky
 
     class << self
       def make_connection(url)
-        Faraday.new(url: url) do |builder|
+        Faraday.new(url:) do |builder|
           builder.request :json
           builder.authorization :Bearer, ENV['TINKOFF_OPENAPI_TOKEN']
           builder.response :oj, content_type: 'application/json'

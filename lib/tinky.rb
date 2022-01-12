@@ -139,7 +139,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     def candles_params(figi)
       current_time = Time.now
       {
-        figi:     figi,
+        figi:,
         from:     (current_time - (24 * 3600 * 3)).iso8601,
         to:       current_time.iso8601,
         interval: 'hour'
