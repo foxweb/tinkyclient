@@ -77,17 +77,17 @@ pry(Tinky)> total_amount(positions)
 
 1. Если хотите каждый раз передавать токен из локального окружения в контейнер (лучший способ):
   ```sh
-  $ docker run -e TINKOFF_OPENAPI_TOKEN -t foxweb/tinkyclient
+  $ docker run --rm -e TINKOFF_OPENAPI_TOKEN -t foxweb/tinkyclient
   ```
 
 2. Если вы храните токен в `.env.local` (не рекомендую, можно случайно его опубликовать или украсть):
   ```sh
-  $ docker run --env-file .env.local -t foxweb/tinkyclient
+  $ docker run --rm --env-file .env.local -t foxweb/tinkyclient
   ```
 
 3. Если хотите каждый раз передавать токен через CLI в контейнер (не рекомендую, так как токен сохранится в history и логах):
   ```sh
-  $ docker run -e TINKOFF_OPENAPI_TOKEN=ваш_токен -t foxweb/tinkyclient
+  $ docker run --rm -e TINKOFF_OPENAPI_TOKEN=ваш_токен -t foxweb/tinkyclient
   ```
 
 ## Постоянное обновление портфолио
