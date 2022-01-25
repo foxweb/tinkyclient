@@ -126,13 +126,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     def exchange_rates(positions)
       # calculate exchange rate in RUB by currency
       currencies(positions).reduce({}) do |result, c|
-        last_currency_candle = client.market_candles(candles_params(c[:figi]))
-        rate = last_currency_candle.dig(:payload, :candles).last[:c]
-
-        # get currency code by ticker
-        currency = currency_by_ticker(c[:ticker])
-
-        result.merge(currency => rate)
+        result.merge(currency_by_ticker(c[:ticker]) => exchange_rate(c))
       end
     end
 
@@ -192,6 +186,10 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def row_data(item)
+      if item[:instrumentType] == 'Currency'
+        item[:averagePositionPrice] = { currency: 'RUB', value: exchange_rate(item) }
+      end
+
       [
         item[:instrumentType].upcase,
         decorate_name(item[:name]),
@@ -260,6 +258,13 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def print_timestamp
       puts "\nLast updated: #{Time.now}\n\n"
+    end
+
+    def exchange_rate(position)
+      client
+        .market_candles(candles_params(position[:figi]))
+        .dig(:payload, :candles)
+        .last[:c]
     end
 
     def currency_by_ticker(ticker)
