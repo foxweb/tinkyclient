@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require_relative '../lib/tinky'
+
+Tinky.total_banner

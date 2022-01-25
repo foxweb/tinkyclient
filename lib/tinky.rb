@@ -34,6 +34,17 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       print_timestamp
     end
 
+    def total_banner
+      items = positions
+      rates = exchange_rates(items)
+      summary = full_summary(items, rates)
+
+      total = format('%.2f р.', summary[:total_with_rub][0].to_f.round(2))
+      percent = format('%+.2f %%', summary[:yield_percent][0].to_f.round(2))
+
+      print `toilet -w 100 #{total} #{percent}`
+    end
+
     def watch_portfolio
       print `tput smcup`
 
