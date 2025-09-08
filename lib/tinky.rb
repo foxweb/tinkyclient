@@ -13,9 +13,9 @@ require './lib/tinky/client_error'
 
 module Tinky # rubocop:disable Metrics/ModuleLength
   CURRENCIES = {
-    RUB: { symbol: '₽', ticker: nil },
-    USD: { symbol: '$', ticker: 'USD000UTSTOM' },
-    EUR: { symbol: '€', ticker: 'EUR_RUB__TOM' }
+    rub: { symbol: '₽', ticker: nil },
+    usd: { symbol: '$', ticker: 'USD000UTSTOM' },
+    eur: { symbol: '€', ticker: 'EUR_RUB__TOM' }
   }.freeze
 
   class << self
@@ -27,9 +27,9 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
       puts "\nTotal amount summary:"
 
-      rates = exchange_rates(items)
-      summary_data = full_summary(items, rates).values
-      puts summary_table(summary_data)
+      # rates = exchange_rates(items)
+      # summary_data = full_summary(items, rates).values
+      # puts summary_table(summary_data)
 
       print_timestamp
     end
@@ -180,46 +180,36 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       client.portfolio
     end
 
-    def sell_price(item)
-      balance = item[:balance].to_d
-      avg_buy_price = item[:averagePositionPrice][:value].to_d
-      expected_yield = item[:expectedYield][:value].to_d
-
-      {
-        value:    ((balance * avg_buy_price) + expected_yield) / balance,
-        currency: item[:averagePositionPrice][:currency]
-      }
-    end
-
     def row_data(item)
+      currency = item[:averagePositionPrice][:currency]
       [
         item[:instrumentType].upcase,
-        decorate_name(item[:name]),
-        { value: decorate_amount(item[:balance]), alignment: :right },
+        decorate_name(item[:ticker]),
+        { value: decorate_amount(item[:quantity][:units]), alignment: :right },
         {
           value:     decorate_price(item[:averagePositionPrice]),
           alignment: :right
         },
         {
-          value:     decorate_price(sell_price(item)),
+          value:     decorate_price(item[:currentPrice]),
           alignment: :right
         },
-        { value: decorate_yield(item[:expectedYield]), alignment: :right },
+        { value: decorate_yield(item[:expectedYield], currency), alignment: :right },
         { value: decorate_yield_percent(item), alignment: :right }
       ]
     end
 
-    def decorate_yield(expected_yield)
-      value = expected_yield[:value]
-      currency = CURRENCIES[expected_yield[:currency].to_sym]
+    def decorate_yield(expected_yield, currency = 'usd')
+      value = expected_yield[:units].to_f
+      currency = CURRENCIES[currency.to_sym]
 
-      formatted_value = format('%+.2f %s', value, currency[:symbol])
+      formatted_value = format('%+.2f %s', value.round(2), currency[:symbol])
       pastel.decorate(formatted_value, yield_color(value))
     end
 
     def decorate_yield_percent(item)
-      total = item.dig(:averagePositionPrice, :value).to_d * item[:balance].to_d
-      value = item.dig(:expectedYield, :value).to_d / total.to_d * 100
+      total = item.dig(:averagePositionPrice, :units).to_d * item[:quantity][:units].to_d
+      value = item.dig(:expectedYield, :units).to_d / total.to_d * 100
 
       formatted_value = format('%+.2f %%', value.round(2))
       pastel.decorate(formatted_value, yield_color(value))
@@ -254,8 +244,9 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def decorate_price(price)
+      value = price[:units].to_d + (price[:nano].to_d / (10**9))
       currency = CURRENCIES[price[:currency].to_sym]
-      format('%.2f %s', price[:value], currency[:symbol])
+      format('%.2f %s', value.to_f, currency[:symbol])
     end
 
     def print_timestamp
@@ -267,7 +258,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def positions
-      portfolio_data.dig(:payload, :positions)
+      portfolio_data[:positions]
     end
 
     # select only currencies positions (wallet)

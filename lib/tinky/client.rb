@@ -4,27 +4,45 @@ require 'faraday_middleware/parse_oj'
 
 module Tinky
   class Client
+    NAMESPACE = 'tinkoff.public.invest.api.contract.v1'.freeze
     attr_reader :connection
 
     def initialize
-      @connection = Client.make_connection(ENV['TINKOFF_OPENAPI_URL'])
+      @connection = Client.make_connection(ENV.fetch('TINKOFF_OPENAPI_URL',
+                                                     nil))
     end
 
     def portfolio
-      get_data('portfolio')
+      request_data('OperationsService/GetPortfolio',
+                   { accountId: '2000377503', currency: 'RUB' })
     end
 
     def portfolio_currencies
-      get_data('portfolio/currencies')
+      request_data('portfolio/currencies')
     end
 
     def market_candles(params = {})
       get_data('market/candles', params)
     end
 
+    def currencies
+      request_data('InstrumentsService/Currencies',
+                   { instrumentStatus:   'INSTRUMENT_STATUS_UNSPECIFIED',
+                     instrumentExchange: 'INSTRUMENT_EXCHANGE_UNSPECIFIED' })
+    end
+
+    def user_info
+      request_data('UsersService/GetInfo', {})
+    end
+
+    def accounts
+      request_data('UsersService/GetAccounts',
+                   { status: 'ACCOUNT_STATUS_UNSPECIFIED' })
+    end
+
   private
-    def get_data(url, params = {})
-      request(:get, url, params)
+    def request_data(url, params = {})
+      request(:post, [NAMESPACE, url].join('.'), params)
     end
 
     def request(method, url, params = {})
@@ -46,9 +64,9 @@ module Tinky
 
     class << self
       def make_connection(url)
-        Faraday.new(url:) do |builder|
+        Faraday.new(url:, ssl: { verify: false }) do |builder|
           builder.request :json
-          builder.authorization :Bearer, ENV['TINKOFF_OPENAPI_TOKEN']
+          builder.authorization :Bearer, ENV.fetch('TINKOFF_OPENAPI_TOKEN', nil)
           builder.response :oj, content_type: 'application/json'
           builder.adapter  Faraday.default_adapter
         end
