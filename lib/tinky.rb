@@ -1,13 +1,9 @@
 require './config/dotenv'
 require './config/oj'
-
 require 'bigdecimal/util'
-
 require 'tty/table'
-
 require 'pry'
 require 'awesome_print'
-
 require './lib/tinky/client'
 require './lib/tinky/client_error'
 
@@ -25,7 +21,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       puts portfolio_table(positions)
 
       puts "\nTotal amount summary:"
-      puts summary_table(full_summary.values)
+      puts summary_table(summary_data.values)
 
       print_timestamp
     end
@@ -41,7 +37,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         puts
 
         puts 'Total amount summary:'
-        puts summary_table(full_summary.values)
+        puts summary_table(summary_data.values)
 
         print_timestamp
 
@@ -96,7 +92,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
-    def full_summary
+    def summary_data
       expected_yield = total_without_currencies / (100 + total_yield[0]) * total_yield[0]
 
       {
