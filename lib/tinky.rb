@@ -20,16 +20,16 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
   class << self
     def portfolio
-      items = positions
+      items = positions.sort_by { |i| i[:type] } # .select{|i| i[:ticker] == 'TIPO2'}
 
       puts "\nPortfolio:"
       puts portfolio_table(items)
 
       puts "\nTotal amount summary:"
 
-      # rates = exchange_rates(items)
-      # summary_data = full_summary(items, rates).values
-      # puts summary_table(summary_data)
+      # exchange_rates(items)
+      binding.pry
+      puts summary_table(full_summary.values)
 
       print_timestamp
     end
@@ -48,9 +48,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
         puts 'Total amount summary:'
 
-        rates = exchange_rates(items)
-        summary_data = full_summary(items, rates).values
-        puts summary_table(summary_data)
+        puts summary_table(full_summary.values)
 
         print_timestamp
 
@@ -75,8 +73,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       prev_type = items.first[:instrumentType]
 
       table = TTY::Table.new(
-        header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price',
-                 'Yield', 'Yield %']
+        header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price', 'Yield', 'Yield %']
       )
 
       items.each do |item|
@@ -158,13 +155,14 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       end
     end
 
-    def full_summary(items, rates)
-      result = summary(items, rates)
-
-      result.merge(
-        yield_percent:  [result[:yield][0] / result[:price][0] * 100, '%'],
-        total_with_rub: [result[:total][0] + rub_balance, '₽']
-      )
+    def full_summary
+      {
+        total_purchases: [1, '₽'],
+        expected_yield:  [1, '₽'],
+        expected_total:  [1, '₽'],
+        total_yield:     decorate_price(portfolio_data[:expectedYield]),
+        total_with_rub:  decorate_price(portfolio_data[:totalAmountPortfolio])
+      }
     end
 
   private
@@ -177,7 +175,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def portfolio_data
-      client.portfolio
+      @portfolio_data ||= client.portfolio
     end
 
     def row_data(item)
@@ -187,11 +185,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         decorate_name(item[:ticker]),
         { value: decorate_amount(item[:quantity][:units]), alignment: :right },
         {
-          value:     decorate_price(item[:averagePositionPrice]),
+          value:     decorate_price(item[:averagePositionPrice]).join(' '),
           alignment: :right
         },
         {
-          value:     decorate_price(item[:currentPrice]),
+          value:     decorate_price(item[:currentPrice]).join(' '),
           alignment: :right
         },
         { value: decorate_yield(item[:expectedYield], currency), alignment: :right },
@@ -209,7 +207,12 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def decorate_yield_percent(item)
       total = item.dig(:averagePositionPrice, :units).to_d * item[:quantity][:units].to_d
-      value = item.dig(:expectedYield, :units).to_d / total.to_d * 100
+
+      value = if item[:averagePositionPrice][:units].to_d.zero? || item[:quantity][:units].to_d.zero?
+        0.0
+      else
+        item.dig(:expectedYield, :units).to_d / total.to_d * 100
+      end
 
       formatted_value = format('%+.2f %%', value.round(2))
       pastel.decorate(formatted_value, yield_color(value))
@@ -245,8 +248,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def decorate_price(price)
       value = price[:units].to_d + (price[:nano].to_d / (10**9))
-      currency = CURRENCIES[price[:currency].to_sym]
-      format('%.2f %s', value.to_f, currency[:symbol])
+      currency_symbol = price.key?(:currency) ? CURRENCIES[price[:currency].to_sym][:symbol] : '%'
+      [value.to_f.round(2), currency_symbol]
     end
 
     def print_timestamp

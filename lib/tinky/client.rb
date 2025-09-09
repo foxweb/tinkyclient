@@ -8,21 +8,11 @@ module Tinky
     attr_reader :connection
 
     def initialize
-      @connection = Client.make_connection(ENV.fetch('TINKOFF_OPENAPI_URL',
-                                                     nil))
+      @connection = Client.make_connection(ENV.fetch('TINKOFF_OPENAPI_URL', nil))
     end
 
     def portfolio
-      request_data('OperationsService/GetPortfolio',
-                   { accountId: '2000377503', currency: 'RUB' })
-    end
-
-    def portfolio_currencies
-      request_data('portfolio/currencies')
-    end
-
-    def market_candles(params = {})
-      get_data('market/candles', params)
+      request_data('OperationsService/GetPortfolio', { accountId: '2000377503', currency: 'RUB' })
     end
 
     def currencies
@@ -36,8 +26,7 @@ module Tinky
     end
 
     def accounts
-      request_data('UsersService/GetAccounts',
-                   { status: 'ACCOUNT_STATUS_UNSPECIFIED' })
+      request_data('UsersService/GetAccounts', { status: 'ACCOUNT_STATUS_UNSPECIFIED' })
     end
 
   private
