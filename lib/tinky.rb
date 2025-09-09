@@ -21,14 +21,10 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
   class << self # rubocop:disable Metrics/ClassLength
     def portfolio
-      items = positions # .select { |i| i[:ticker] == 'AAPL' }
-
       puts "\nPortfolio:"
-      puts portfolio_table(items)
+      puts portfolio_table(positions)
 
       puts "\nTotal amount summary:"
-
-      # exchange_rates(items)
       puts summary_table(full_summary.values)
 
       print_timestamp
@@ -38,16 +34,13 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       print `tput smcup`
 
       loop do
-        items = positions
-
         print `clear`
 
         puts 'Portfolio:'
-        puts portfolio_table(items)
+        puts portfolio_table(positions)
         puts
 
         puts 'Total amount summary:'
-
         puts summary_table(full_summary.values)
 
         print_timestamp
@@ -61,10 +54,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def wallet
-      items = portfolio_data[:positions].select { |i| i[:instrumentType] == 'currency' }
-
       puts "\nWallet:"
-      puts wallet_table(items)
+      puts wallet_table(currency_positions)
 
       print_timestamp
     end
@@ -73,7 +64,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       prev_type = items.first[:instrumentType]
 
       table = TTY::Table.new(
-        header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price', 'Yield', 'Yield %']
+        header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price', 'Buy sum', 'Current sum',
+                 'Yield', 'Yield %']
       )
 
       items.each do |item|
@@ -104,71 +96,16 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
-    def total_amount(positions) # rubocop:disable Metrics/AbcSize
-      total = Hash.new do |h, k|
-        h[k] = { price: 0, yield: 0, total: 0 }
-      end
-
-      positions.each_with_object(total) do |item, result|
-        currency = item.dig(:averagePositionPrice, :currency).to_sym
-        avg_price = item.dig(:averagePositionPrice, :value).to_d
-        price = avg_price * item[:balance].to_d
-        expected_yield = item.dig(:expectedYield, :value).to_d
-
-        result[currency][:price] += price
-        result[currency][:yield] += expected_yield
-        result[currency][:total] += price + expected_yield
-      end
-    end
-
-    def exchange_rates(positions)
-      # calculate exchange rate in RUB by currency
-      currencies(positions).reduce({}) do |result, c|
-        last_currency_candle = client.market_candles(candles_params(c[:figi]))
-        rate = last_currency_candle.dig(:payload, :candles).last[:c]
-
-        # get currency code by ticker
-        currency = currency_by_ticker(c[:ticker])
-
-        result.merge(currency => rate)
-      end
-    end
-
-    def candles_params(figi)
-      current_time = Time.now
-      {
-        figi:,
-        from:     (current_time - (24 * 3600 * 3)).iso8601,
-        to:       current_time.iso8601,
-        interval: 'hour'
-      }
-    end
-
-    def summary(items, rates) # rubocop:disable Metrics/AbcSize
-      total = Hash.new { |h, k| h[k] = [0, '₽'] }
-
-      total_amount(items).each_with_object(total) do |(key, value), memo|
-        rate = rates.fetch(key, 1)
-
-        memo[:price][0] += value[:price] * rate
-        memo[:yield][0] += value[:yield] * rate
-        memo[:total][0] += value[:total] * rate
-      end
-    end
-
     def full_summary
-      total_yield = decorate_price(portfolio_data[:expectedYield])
-      expected_total = decorate_price(portfolio_data[:totalAmountPortfolio])
-      total_without_currencies = expected_total[0] - rub_balance[0]
       expected_yield = total_without_currencies / (100 + total_yield[0]) * total_yield[0]
 
       {
-        total_purchases: [0, '₽'],
+        total_purchases: [total_purchases, '₽'],
         expected_yield:  [expected_yield, '₽'],
         expected_total:  [total_without_currencies, '₽'],
         total_yield:     total_yield,
         rub_balance:     rub_balance,
-        total_with_rub:  expected_total
+        total_with_rub:  decorate_price(portfolio_data[:totalAmountPortfolio])
       }
     end
 
@@ -187,18 +124,20 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def row_data(item) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       currency = item[:averagePositionPrice][:currency]
+      amount = decorate_amount(item[:quantity][:units]).to_i
+      avg_buy_price = decorate_price(item[:averagePositionPrice])
+      current_price = decorate_price(item[:currentPrice])
+      buy_sum = [(avg_buy_price[0] * amount).round(2), avg_buy_price[1]]
+      current_sum = [(current_price[0] * amount).round(2), current_price[1]]
+
       [
         item[:instrumentType].upcase,
         decorate_name(item[:ticker]),
-        { value: decorate_amount(item[:quantity][:units]), alignment: :right },
-        {
-          value:     decorate_price(item[:averagePositionPrice]).join(' '),
-          alignment: :right
-        },
-        {
-          value:     decorate_price(item[:currentPrice]).join(' '),
-          alignment: :right
-        },
+        { value: amount, alignment: :right },
+        { value: avg_buy_price.join(' '), alignment: :right },
+        { value: current_price.join(' '), alignment: :right },
+        { value: buy_sum.join(' '), alignment: :right },
+        { value: current_sum.join(' '), alignment: :right },
         { value: decorate_yield(item[:expectedYield], currency), alignment: :right },
         { value: decorate_yield_percent(item), alignment: :right }
       ]
@@ -269,19 +208,12 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       puts "\nLast updated: #{Time.now}\n\n"
     end
 
-    def currency_by_ticker(ticker)
-      CURRENCIES.select { |_, v| v[:ticker] == ticker }.keys.first
-    end
-
     def positions
       portfolio_data[:positions]
     end
 
-    # select only currencies positions (wallet)
-    def currencies(positions)
-      positions.select do |position|
-        position[:instrumentType] == 'Currency'
-      end
+    def currency_positions
+      portfolio_data[:positions].select { |i| i[:instrumentType] == 'currency' }
     end
 
     def decorate_summary(items)
@@ -309,13 +241,26 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
-    def rub_balance
-      decorate_price(portfolio_data[:totalAmountCurrencies])
-    end
-
     def symbol_by_ticker(ticker)
       pair = CURRENCIES.values.find { |c| c[:ticker] == ticker.to_s }
       pair&.fetch(:symbol, nil)
+    end
+
+    def total_yield
+      @total_yield ||= decorate_price(portfolio_data[:expectedYield])
+    end
+
+    def total_purchases
+      total_without_currencies / (100 + total_yield[0]) * 100
+    end
+
+    def total_without_currencies
+      @total_without_currencies ||=
+        decorate_price(portfolio_data[:totalAmountPortfolio])[0] - rub_balance[0]
+    end
+
+    def rub_balance
+      decorate_price(portfolio_data[:totalAmountCurrencies])
     end
   end
 end
