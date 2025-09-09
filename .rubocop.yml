@@ -1,4 +1,4 @@
-require:
+plugins:
   - rubocop-performance
 
 AllCops:
@@ -31,7 +31,7 @@ Style/Documentation:
   Enabled: false
 
 Layout/LineLength:
-  Max: 80
+  Max: 100
 
 Metrics/MethodLength:
   Max: 15
