@@ -69,6 +69,7 @@ $ bin/console
 ```sh
 pry(Tinky)> portfolio
 pry(Tinky)> wallet
+pry(Tinky)> available_currencies
 pry(Tinky)> puts summary_table(summary_data.values)
 ```
 

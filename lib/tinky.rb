@@ -12,7 +12,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     rub: { symbol: '₽', ticker: 'RUB000UTSTOM' },
     usd: { symbol: '$', ticker: 'USD000UTSTOM' },
     eur: { symbol: '€', ticker: 'EUR_RUB__TOM' },
-    cny: { symbol: '¥', ticker: 'CNYRUB_TOM_CETS' }
+    cny: { symbol: '¥', ticker: 'CNYRUB_TOM_CETS' },
+    try: { symbol: '₺', ticker: 'TRYRUB_TOM_CETS' }
   }.freeze
 
   class << self # rubocop:disable Metrics/ClassLength
@@ -103,6 +104,13 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         rub_balance:     rub_balance,
         total_with_rub:  decorate_price(portfolio_data[:totalAmountPortfolio])
       }
+    end
+
+    def available_currencies
+      @available_currencies ||= client.currencies[:instruments].reduce({}) do |memo, currency|
+        data = currency.slice(:ticker, :name)
+        memo.merge!(currency[:isoCurrencyName].to_sym => data)
+      end
     end
 
   private
@@ -239,7 +247,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def symbol_by_ticker(ticker)
       pair = CURRENCIES.values.find { |c| c[:ticker] == ticker.to_s }
-      pair&.fetch(:symbol, nil)
+      pair&.fetch(:symbol, nil) || '?'
     end
 
     def total_yield
