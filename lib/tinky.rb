@@ -16,6 +16,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     try: { symbol: '₺', ticker: 'TRYRUB_TOM_CETS' }
   }.freeze
 
+  CURRENCY_MODE = :rub # NOTE: for further development
+
   class << self # rubocop:disable Metrics/ClassLength
     def portfolio
       puts "\nPortfolio:"
@@ -95,11 +97,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def summary_data
       expected_yield = total_without_currencies / (100 + total_yield[0]) * total_yield[0]
-
+      symbol = CURRENCIES[CURRENCY_MODE][:symbol]
       {
-        total_purchases: [total_purchases, '₽'],
-        expected_yield:  [expected_yield, '₽'],
-        expected_total:  [total_without_currencies, '₽'],
+        total_purchases: [total_purchases, symbol],
+        expected_yield:  [expected_yield, symbol],
+        expected_total:  [total_without_currencies, symbol],
         total_yield:     total_yield,
         rub_balance:     rub_balance,
         total_with_rub:  decorate_price(portfolio_data[:totalAmountPortfolio])
@@ -123,7 +125,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def portfolio_data
-      @portfolio_data ||= client.portfolio
+      @portfolio_data ||= client.portfolio(currency_mode: CURRENCY_MODE)
     end
 
     def row_data(item) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

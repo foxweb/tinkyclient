@@ -11,8 +11,9 @@ module Tinky
       @connection = Client.make_connection(ENV.fetch('TINKOFF_OPENAPI_URL', nil))
     end
 
-    def portfolio
-      request_data('OperationsService/GetPortfolio', { accountId: '2000377503', currency: 'RUB' })
+    def portfolio(currency_mode:)
+      account_id = accounts[:accounts].first[:id]
+      request_data('OperationsService/GetPortfolio', { accountId: account_id, currency: currency_mode })
     end
 
     def currencies
