@@ -13,14 +13,15 @@ require './lib/tinky/client_error'
 
 module Tinky # rubocop:disable Metrics/ModuleLength
   CURRENCIES = {
-    rub: { symbol: '₽', ticker: nil },
+    rub: { symbol: '₽', ticker: 'RUB000UTSTOM' },
     usd: { symbol: '$', ticker: 'USD000UTSTOM' },
-    eur: { symbol: '€', ticker: 'EUR_RUB__TOM' }
+    eur: { symbol: '€', ticker: 'EUR_RUB__TOM' },
+    cny: { symbol: '¥', ticker: 'CNYRUB_TOM_CETS' }
   }.freeze
 
   class << self # rubocop:disable Metrics/ClassLength
     def portfolio
-      items = positions #.select { |i| i[:ticker] == 'AAPL' }
+      items = positions # .select { |i| i[:ticker] == 'AAPL' }
 
       puts "\nPortfolio:"
       puts portfolio_table(items)
@@ -60,7 +61,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def wallet
-      items = client.portfolio_currencies.dig(:payload, :currencies)
+      items = portfolio_data[:positions].select { |i| i[:instrumentType] == 'currency' }
 
       puts "\nWallet:"
       puts wallet_table(items)
@@ -88,8 +89,9 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table = TTY::Table.new(header: %w[Currencies])
 
       items.each do |item|
-        currency = CURRENCIES[item[:currency].to_sym]
-        formatted_value = format('%.2f %s', item[:balance], currency[:symbol])
+        currency_symbol = symbol_by_ticker(item[:ticker])
+        value = decorate_price(item[:quantity])[0]
+        formatted_value = format('%.2f %s', value, currency_symbol)
 
         table << [
           {
@@ -156,9 +158,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def full_summary
       total_yield = decorate_price(portfolio_data[:expectedYield])
-      total_amount_currencies = decorate_price(portfolio_data[:totalAmountCurrencies])
       expected_total = decorate_price(portfolio_data[:totalAmountPortfolio])
-      total_without_currencies = expected_total[0] - total_amount_currencies[0]
+      total_without_currencies = expected_total[0] - rub_balance[0]
       expected_yield = total_without_currencies / (100 + total_yield[0]) * total_yield[0]
 
       {
@@ -166,6 +167,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
         expected_yield:  [expected_yield, '₽'],
         expected_total:  [total_without_currencies, '₽'],
         total_yield:     total_yield,
+        rub_balance:     rub_balance,
         total_with_rub:  expected_total
       }
     end
@@ -299,6 +301,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
           'Expected Yield',
           'Expected Total',
           'Yield %',
+          'RUB balance',
           'Total + RUB balance'
         ]
       )
@@ -307,10 +310,12 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def rub_balance
-      client
-        .portfolio_currencies
-        .dig(:payload, :currencies)
-        .find { |i| i[:currency] == 'RUB' }[:balance].to_d
+      decorate_price(portfolio_data[:totalAmountCurrencies])
+    end
+
+    def symbol_by_ticker(ticker)
+      pair = CURRENCIES.values.find { |c| c[:ticker] == ticker.to_s }
+      pair&.fetch(:symbol, nil)
     end
   end
 end
