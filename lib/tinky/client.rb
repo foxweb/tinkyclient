@@ -13,7 +13,8 @@ module Tinky
 
     def portfolio(currency_mode:)
       account_id = accounts[:accounts].first[:id]
-      request_data('OperationsService/GetPortfolio', { accountId: account_id, currency: currency_mode })
+      request_data('OperationsService/GetPortfolio',
+                   { accountId: account_id, currency: currency_mode })
     end
 
     def currencies
@@ -23,11 +24,11 @@ module Tinky
     end
 
     def user_info
-      request_data('UsersService/GetInfo', {})
+      request_data('UsersService/GetInfo')
     end
 
     def accounts
-      request_data('UsersService/GetAccounts', { status: 'ACCOUNT_STATUS_UNSPECIFIED' })
+      request_data('UsersService/GetAccounts', { status: 'ACCOUNT_STATUS_OPEN' })
     end
 
   private
