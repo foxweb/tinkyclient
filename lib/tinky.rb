@@ -26,6 +26,12 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       puts "\nTotal amount summary:"
       puts summary_table(summary_data.values)
 
+      puts "\nUser info:"
+      puts user_info_table
+
+      puts "\nAccount info:"
+      puts account_table
+
       print_timestamp
     end
 
@@ -95,6 +101,22 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
+    def user_info_table
+      table = TTY::Table.new
+      user_info_rows.each do |row|
+        table << row
+      end
+      table.render(:unicode, padding: [0, 1, 0, 1])
+    end
+
+    def account_table
+      table = TTY::Table.new
+      account_rows.each do |row|
+        table << row
+      end
+      table.render(:unicode, padding: [0, 1, 0, 1])
+    end
+
     def summary_data
       expected_yield = total_without_currencies / (100 + total_yield[0]) * total_yield[0]
       symbol = CURRENCIES[CURRENCY_MODE][:symbol]
@@ -126,6 +148,14 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def portfolio_data
       @portfolio_data ||= client.portfolio(currency_mode: CURRENCY_MODE)
+    end
+
+    def user_data
+      @user_data ||= client.user_info
+    end
+
+    def account_data
+      @account_data ||= client.accounts[:accounts].first
     end
 
     def row_data(item) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -267,6 +297,26 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def rub_balance
       decorate_price(portfolio_data[:totalAmountCurrencies])
+    end
+
+    def user_info_rows # rubocop:disable Metrics/AbcSize
+      [
+        [pastel.bold('User ID'), user_data[:userId]],
+        [pastel.bold('Premium status'), user_data[:premStatus] ? '✅' : '❌'],
+        [pastel.bold('Qual status'), user_data[:qualStatus] ? '✅' : '❌'],
+        [pastel.bold('Tariff'), user_data[:tariff].capitalize],
+        [pastel.bold('Risk level'), user_data[:riskLevelCode].capitalize]
+      ]
+    end
+
+    def account_rows # rubocop:disable Metrics/AbcSize
+      [
+        [pastel.bold('Account ID'), account_data[:id]],
+        [pastel.bold('Type'), account_data[:type]],
+        [pastel.bold('Name'), account_data[:name]],
+        [pastel.bold('Opened at'), Time.parse(account_data[:openedDate]).strftime('%d %b %Y')],
+        [pastel.bold('Access level'), account_data[:accessLevel]]
+      ]
     end
   end
 end
