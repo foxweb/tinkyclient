@@ -1,6 +1,6 @@
 ![Rubocop](https://github.com/foxweb/tinkyclient/workflows/Rubocop/badge.svg)
 
-# TinkyClient — tiny client for Tinkoff OpenAPI
+# TinkyClient — мини-клиент для работы с API Т-Инвестиций
 
 Предлагаю вашему вниманию небольшой консольный Ruby-клиент для доступа к брокерскому аккаунту Т-Инвестиции.
 На данный момент реализовано только отображение портфолио.
@@ -11,12 +11,13 @@
 # Быстрый старт
 
 Требования:
-- установленный Ruby 3.4.5 и новее
-- наличие [токена Tinkoff OpenAPI](https://developer.tbank.ru/invest/intro/intro/token)
+- установленный [Ruby 3.4.5](https://www.ruby-lang.org/en/news/2025/07/15/ruby-3-4-5-released/) и новее
+- наличие [токена T-Инвестиции API](https://developer.tbank.ru/invest/intro/intro/token)
+- минимальный опыт работы в консоли Linux или MacOS.
 
 ```sh
 $ bundle
-$ echo TINKOFF_OPENAPI_TOKEN=ваш_токен > .env.local
+$ echo TINVEST_OPENAPI_TOKEN=ваш_токен > .env.local
 $ bin/portfolio
 $ bin/wallet
 $ bin/console
@@ -34,9 +35,16 @@ $ bin/portfolio
 ### Колонки таблицы
 
 - `Type` — тип актива.
-  - `SHARE` — акции.
-  - `BOND` — облигации.
-  - `ETF` — инвестиционный фонд.
+  - `BOND` — Облигация.
+  - `SHARE` — Акция.
+  - `CURRENCY` — Валюта.
+  - `ETF` — Exchange-traded fund. Фонд.
+  - `FUTURES` — Фьючерс.
+  - `SP` — Структурная нота.
+  - `OPTION` — Опцион.
+  - `CLEARING_CERTIFICATE` — Clearing certificate.
+  - `INDEX` — Индекс.
+  - `COMMODITY` — Товар.
 - `Name` — название актива.
 - `Amount` — количество в штуках или сумма в валюте.
 - `Avg. buy` — средняя цена покупки актива. Показатель берётся напрямую из OpenAPI. Например: если вы купили 2 акции за 10 и 20 рублей, то средняя цена покупки будет 15 рублей. От этой стоимости и текущей цены считается ожидаемый доход.
@@ -79,7 +87,7 @@ pry(Tinky)> puts summary_table(summary_data.values)
 
 1. Если хотите каждый раз передавать токен из локального окружения в контейнер (лучший способ):
   ```sh
-  $ docker run --rm -e TINKOFF_OPENAPI_TOKEN -t foxweb/tinkyclient
+  $ docker run --rm -e TINVEST_OPENAPI_TOKEN -t foxweb/tinkyclient
   ```
 
 2. Если вы храните токен в `.env.local` (не рекомендую, можно случайно его опубликовать или украсть):
@@ -89,7 +97,7 @@ pry(Tinky)> puts summary_table(summary_data.values)
 
 3. Если хотите каждый раз передавать токен через CLI в контейнер (не рекомендую, так как токен сохранится в history и логах):
   ```sh
-  $ docker run --rm -e TINKOFF_OPENAPI_TOKEN=ваш_токен -t foxweb/tinkyclient
+  $ docker run --rm -e TINVEST_OPENAPI_TOKEN=ваш_токен -t foxweb/tinkyclient
   ```
 
 ## Постоянное обновление портфолио

@@ -8,7 +8,7 @@ module Tinky
     attr_reader :connection
 
     def initialize
-      @connection = Client.make_connection(ENV.fetch('TINKOFF_OPENAPI_URL', nil))
+      @connection = Client.make_connection(ENV.fetch('TINVEST_OPENAPI_URL', nil))
     end
 
     def portfolio(currency_mode:)
@@ -57,7 +57,7 @@ module Tinky
       def make_connection(url)
         Faraday.new(url:, ssl: { verify: false }) do |builder|
           builder.request :json
-          builder.authorization :Bearer, ENV.fetch('TINKOFF_OPENAPI_TOKEN', nil)
+          builder.authorization :Bearer, ENV.fetch('TINVEST_OPENAPI_TOKEN', nil)
           builder.response :oj, content_type: 'application/json'
           builder.adapter  Faraday.default_adapter
         end

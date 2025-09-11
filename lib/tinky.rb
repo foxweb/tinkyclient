@@ -160,7 +160,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def row_data(item) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       currency = item[:averagePositionPrice][:currency]
-      amount = decorate_amount(item[:quantity][:units]).to_i
+      amount = decorate_amount(item[:quantity])
       avg_buy_price = decorate_price(item[:averagePositionPrice])
       current_price = decorate_price(item[:currentPrice])
       buy_sum = [(avg_buy_price[0] * amount).round(2), avg_buy_price[1]]
@@ -217,11 +217,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def decorate_amount(amount)
-      if amount == amount.to_i
-        amount.round
-      else
-        amount
-      end
+      result = amount[:units].to_i + (amount[:nano].to_f / (10**9)).to_d
+      result == amount[:units].to_i ? amount[:units].to_i : result
     end
 
     def decorate_name(name)
