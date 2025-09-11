@@ -218,7 +218,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
     def decorate_amount(amount)
       result = amount[:units].to_i + (amount[:nano].to_f / (10**9)).to_d
-      result == amount[:units].to_i ? amount[:units].to_i : result
+      result == amount[:units].to_i ? amount[:units].to_i : result.to_f
     end
 
     def decorate_name(name)
