@@ -22,6 +22,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     def portfolio
       puts "\nPortfolio:"
       puts portfolio_table(positions)
+      puts
+      puts "❌ - ticker is blocked for trading\n"
 
       puts "\nTotal amount summary:"
       puts summary_table(summary_data.values)
@@ -70,10 +72,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
       table = TTY::Table.new(
         header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price', 'Buy sum', 'Current sum',
-                 'Yield', 'Yield %']
+                 'Yield', 'Yield %', 'Daily %']
       )
 
       items.each do |item|
+        # BUG: separator line isn't working according github issue: https://github.com/piotrmurach/tty-table/issues/31
         # table << :separator if item[:instrumentType] != prev_type
         table << row_data(item)
         prev_type = item[:instrumentType]
@@ -139,11 +142,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
   private
     def client
-      Client.new
+      @client ||= Client.new
     end
 
     def pastel
-      Pastel.new
+      @pastel ||= Pastel.new
     end
 
     def portfolio_data
@@ -168,14 +171,15 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
       [
         item[:instrumentType].upcase,
-        decorate_name(item[:ticker]),
+        decorate_name(item),
         { value: amount, alignment: :right },
         { value: avg_buy_price.join(' '), alignment: :right },
         { value: current_price.join(' '), alignment: :right },
         { value: buy_sum.join(' '), alignment: :right },
         { value: current_sum.join(' '), alignment: :right },
         { value: decorate_yield(item[:expectedYield], currency), alignment: :right },
-        { value: decorate_yield_percent(item), alignment: :right }
+        { value: decorate_yield_percent(item, :expectedYield), alignment: :right },
+        { value: decorate_yield_percent(item, :dailyYield), alignment: :right }
       ]
     end
 
@@ -195,11 +199,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       decorate_price(item[:averagePositionPrice])[0] * item[:quantity][:units].to_d
     end
 
-    def decorate_yield_percent(item)
+    def decorate_yield_percent(item, value = :expectedYield)
       yield_percent = if zero_item?(item)
         0.0
       else
-        decorate_price(item[:expectedYield])[0].to_d / total_buy(item).to_d * 100
+        decorate_price(item[value])[0].to_d / total_buy(item).to_d * 100
       end
 
       formatted_value = format('%+.2f %%', yield_percent.round(2))
@@ -221,14 +225,15 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       result == amount[:units].to_i ? amount[:units].to_i : result.to_f
     end
 
-    def decorate_name(name)
+    def decorate_name(item)
+      name = item[:ticker]
       stripped_name = if name.length > 29
         "#{name[0..28]}…"
       else
         name
       end
 
-      pastel.bold(stripped_name)
+      pastel.bold(stripped_name + (' ❌' if item[:blocked]).to_s)
     end
 
     def decorate_price(price)
@@ -242,11 +247,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def positions
-      portfolio_data[:positions]
+      @positions ||= portfolio_data[:positions]
     end
 
     def currency_positions
-      portfolio_data[:positions].select { |i| i[:instrumentType] == 'currency' }
+      positions.select { |i| i[:instrumentType] == 'currency' }
     end
 
     def decorate_summary(items)
@@ -266,8 +271,8 @@ module Tinky # rubocop:disable Metrics/ModuleLength
           'Expected Yield',
           'Expected Total',
           'Yield %',
-          'RUB balance',
-          'Total + RUB balance'
+          'Wallet',
+          'Total + wallet'
         ]
       )
       table << decorate_summary(items)
