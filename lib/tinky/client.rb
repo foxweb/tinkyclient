@@ -5,22 +5,21 @@ require 'faraday_middleware/parse_oj'
 module Tinky
   class Client
     NAMESPACE = 'tinkoff.public.invest.api.contract.v1'.freeze
+
     attr_reader :connection
 
     def initialize
-      @connection = Client.make_connection(ENV.fetch('TINVEST_OPENAPI_URL', nil))
+      @connection = self.class.make_connection(api_url, api_token)
     end
 
     def portfolio(currency_mode:)
-      account_id = accounts[:accounts].first[:id]
+      account_id = first_account_id
       request_data('OperationsService/GetPortfolio',
                    { accountId: account_id, currency: currency_mode })
     end
 
     def currencies
-      request_data('InstrumentsService/Currencies',
-                   { instrumentStatus:   'INSTRUMENT_STATUS_UNSPECIFIED',
-                     instrumentExchange: 'INSTRUMENT_EXCHANGE_UNSPECIFIED' })
+      request_data('InstrumentsService/Currencies', instruments_request_params)
     end
 
     def user_info
@@ -32,6 +31,22 @@ module Tinky
     end
 
   private
+
+    def api_url
+      ENV.fetch('TINVEST_OPENAPI_URL') { raise ClientError, 'TINVEST_OPENAPI_URL is not set' }
+    end
+
+    def api_token
+      ENV.fetch('TINVEST_OPENAPI_TOKEN') { raise ClientError, 'TINVEST_OPENAPI_TOKEN is not set' }
+    end
+
+    def first_account_id
+      list = accounts[:accounts]
+      raise ClientError, 'No open accounts found' if list.nil? || list.empty?
+
+      list.first[:id]
+    end
+
     def request_data(url, params = {})
       request(:post, [NAMESPACE, url].join('.'), params)
     end
@@ -47,17 +62,23 @@ module Tinky
     end
 
     def handle_error(response)
-      raise(
-        ClientError,
-        "Tinkoff responded with HTTP #{response.status}: #{response.body.ai}"
-      )
+      body_str = response.body.is_a?(Hash) ? response.body.to_s : response.body.inspect
+      message = "Tinkoff API error HTTP #{response.status}: #{body_str}"
+      raise ClientError.new(message, status: response.status, response_body: response.body)
+    end
+
+    def instruments_request_params
+      {
+        instrumentStatus:   'INSTRUMENT_STATUS_UNSPECIFIED',
+        instrumentExchange: 'INSTRUMENT_EXCHANGE_UNSPECIFIED'
+      }
     end
 
     class << self
-      def make_connection(url)
+      def make_connection(url, token)
         Faraday.new(url:, ssl: { verify: false }) do |builder|
           builder.request :json
-          builder.authorization :Bearer, ENV.fetch('TINVEST_OPENAPI_TOKEN', nil)
+          builder.authorization :Bearer, token
           builder.response :oj, content_type: 'application/json'
           builder.adapter  Faraday.default_adapter
         end
