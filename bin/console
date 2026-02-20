@@ -18,10 +18,11 @@ Tinky.define_singleton_method(:help) do
 
     Данные и отладка:
 
-      positions         — сырые позиции портфеля
-      currency_positions — позиции по валютам
-      client            — API-клиент (Faraday)
-      summary_data      — сводные данные портфеля
+      positions            — сырые позиции портфеля
+      currency_positions   — позиции по валютам
+      client               — API-клиент (Faraday)
+      summary_data         — сводные данные портфеля
+      available_currencies - доступные валюты
 
     Справка: Tinky.help — эта подсказка, help — встроенные команды Pry.
 
