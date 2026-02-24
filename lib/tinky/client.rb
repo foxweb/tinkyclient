@@ -30,6 +30,27 @@ module Tinky
       request_data('UsersService/GetAccounts', { status: 'ACCOUNT_STATUS_OPEN' })
     end
 
+    def dividends(instrument_id:, from: nil, to: nil)
+      body = { instrumentId: instrument_id }
+      body[:from] = from.utc.iso8601(3) if from
+      body[:to] = to.utc.iso8601(3) if to
+      request_data('InstrumentsService/GetDividends', body)
+    end
+
+    def bond_coupons(instrument_id:, from: nil, to: nil)
+      body = { instrumentId: instrument_id }
+      body[:from] = from.utc.iso8601(3) if from
+      body[:to] = to.utc.iso8601(3) if to
+      request_data('InstrumentsService/GetBondCoupons', body)
+    end
+
+    # Returns instrument info (including :name) by figi or instrument_uid.
+    # id_type: :figi or :uid
+    def get_instrument(id:, id_type: :figi)
+      type = id_type == :uid ? 'INSTRUMENT_ID_TYPE_UID' : 'INSTRUMENT_ID_TYPE_FIGI'
+      request_data('InstrumentsService/GetInstrumentBy', { idType: type, id: id })
+    end
+
   private
 
     def api_url

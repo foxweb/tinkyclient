@@ -8,12 +8,30 @@ require './lib/tinky/client'
 require './lib/tinky/client_error'
 
 module Tinky # rubocop:disable Metrics/ModuleLength
+  # ISO 4217 currencies supported by T-Invest API (InstrumentsService/Currencies).
+  # Keys: lowercase ISO code; value: { symbol: display symbol, ticker: exchange ticker if known }.
   CURRENCIES = {
     rub: { symbol: '₽', ticker: 'RUB000UTSTOM' },
     usd: { symbol: '$', ticker: 'USD000UTSTOM' },
     eur: { symbol: '€', ticker: 'EUR_RUB__TOM' },
+    gbp: { symbol: '£', ticker: 'GBPRUB_TOM' },
+    chf: { symbol: 'Fr', ticker: 'CHFRUB_TOM' },
+    jpy: { symbol: '¥', ticker: 'JPYRUB_TOM' },
     cny: { symbol: '¥', ticker: 'CNYRUB_TOM_CETS' },
-    try: { symbol: '₺', ticker: 'TRYRUB_TOM_CETS' }
+    hkd: { symbol: 'HK$', ticker: 'HKDRUB_TOM' },
+    try: { symbol: '₺', ticker: 'TRYRUB_TOM_CETS' },
+    kzt: { symbol: '₸', ticker: 'KZTRUB_TOM' },
+    byn: { symbol: 'Br', ticker: 'BYNRUB_TOM' },
+    aud: { symbol: 'A$', ticker: 'AURRUB_TOM' },
+    amd: { symbol: '֏', ticker: 'AMDRUB_TOM' },
+    gel: { symbol: '₾', ticker: 'GELRUB_TOM' },
+    inr: { symbol: '₹', ticker: 'INRRUB_TOM' },
+    uah: { symbol: '₴', ticker: 'UAHRUB_TOM' },
+    uzs: { symbol: 'soʻm', ticker: 'UZSRUB_TOM' },
+    aed: { symbol: 'د.إ', ticker: 'AEDRUB_TOM' },
+    cad: { symbol: 'C$', ticker: 'CADRUB_TOM' },
+    sgd: { symbol: 'S$', ticker: 'SGDRUB_TOM' },
+    thb: { symbol: '฿', ticker: 'THBRUB_TOM' }
   }.freeze
 
   CURRENCY_MODE = :rub # NOTE: for further development
@@ -27,6 +45,9 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
       puts "\nTotal amount summary:"
       puts summary_table(summary_data.values)
+
+      puts "\nFuture payments (dividends & coupons):"
+      puts future_payments_table
 
       puts "\nUser info:"
       puts user_info_table
@@ -161,7 +182,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       @account_data ||= client.accounts[:accounts].first
     end
 
-    def row_data(item) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    def row_data(item)
       currency = item[:averagePositionPrice][:currency]
       amount = decorate_amount(item[:quantity])
       avg_buy_price = decorate_price(item[:averagePositionPrice])
@@ -226,7 +247,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def decorate_name(item)
-      name = item[:ticker]
+      name = instrument_name_for(item) || item[:ticker].to_s
       stripped_name = if name.length > 29
         "#{name[0..28]}…"
       else
@@ -236,10 +257,53 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       pastel.bold(stripped_name + (' ❌' if item[:blocked]).to_s)
     end
 
+    def instrument_name_for(item)
+      id = item[:instrumentUid] || item[:instrument_uid] || item['instrumentUid'] || item['instrument_uid'] || item[:figi]
+      return nil unless id
+
+      instrument_names[id]
+    end
+
+    def instrument_names
+      @instrument_names ||= build_instrument_names
+    end
+
+    def build_instrument_names
+      names = {}
+      securities = positions.reject { |p| p[:instrumentType].to_s == 'currency' }
+      securities.each do |pos|
+        uid = pos[:instrumentUid] || pos[:instrument_uid] || pos['instrumentUid'] || pos['instrument_uid']
+        figi = pos[:figi]
+        id = uid.to_s.empty? ? figi : uid
+        id_type = uid.to_s.empty? ? :figi : :uid
+        next if id.nil? || id.empty? || names.key?(id)
+
+        resp = client.get_instrument(id: id, id_type: id_type)
+        inst = resp[:instrument] || resp['instrument']
+        next unless inst
+
+        name = inst[:name] || inst['name']
+        next unless name
+
+        names[id] = name
+        names[figi] = name if figi && figi != id
+      rescue ClientError
+        # skip failed lookups
+      end
+      names
+    end
+
     def decorate_price(price)
       value = price[:units].to_d + (price[:nano].to_d / (10**9))
-      currency_symbol = price.key?(:currency) ? CURRENCIES[price[:currency].to_sym][:symbol] : '%'
+      currency_symbol = price.key?(:currency) ? currency_symbol_for(price[:currency]) : '%'
       [value.to_f.round(2), currency_symbol]
+    end
+
+    def currency_symbol_for(currency_code)
+      return '%' if currency_code.nil? || currency_code.to_s.empty?
+
+      key = currency_code.to_s.downcase.to_sym
+      CURRENCIES.dig(key, :symbol) || currency_code.to_s.upcase
     end
 
     def print_timestamp
@@ -279,9 +343,136 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
 
+    def future_payments_table
+      items = future_payments
+      return pastel.dim("(no future payments in the next 2 years)\n") if items.empty?
+
+      table = TTY::Table.new(
+        header: %w[Date Instrument Type Amount Qty]
+      )
+      items.each do |item|
+        name = (item[:name] || item[:ticker]).to_s
+        name = "#{name[0..46]}…" if name.length > 47
+        table << [
+          item[:date],
+          name,
+          item[:type] == :dividend ? 'Dividend' : 'Coupon',
+          item[:amount_str],
+          { value: item[:quantity].to_s, alignment: :right }
+        ]
+      end
+      table.render(:unicode, padding: [0, 1, 0, 1])
+    end
+
+    def future_payments
+      @future_payments ||= build_future_payments
+    end
+
+    def build_future_payments
+      instrument_names # preload names so we have them for payments
+      from_time = Time.now.utc
+      to_time = from_time + (90 * 24 * 3600)
+      list = []
+      securities = positions.reject { |p| p[:instrumentType].to_s == 'currency' }
+      securities.each do |pos|
+        id = pos[:instrumentUid] || pos[:instrument_uid] || pos['instrumentUid'] || pos['instrument_uid'] || pos[:figi]
+        next unless id
+
+        qty = decorate_amount(pos[:quantity]).to_f
+        qty = qty.to_i if qty == qty.to_i
+        ticker = (pos[:ticker] || pos[:figi] || '?').to_s
+        display_name = instrument_names[id] || instrument_names[pos[:figi]] || ticker
+
+        case pos[:instrumentType].to_s
+        when 'share', 'etf'
+          fetch_dividends(id, from_time, to_time, display_name, qty, list)
+        when 'bond'
+          fetch_bond_coupons(id, from_time, to_time, display_name, qty, list)
+        end
+      rescue ClientError => e
+        warn "Warning: #{ticker} — #{e.message}" if ENV['TINKY_DEBUG']
+      end
+      list.sort_by { |x| x[:date] }
+    end
+
+    def fetch_dividends(instrument_id, from_time, to_time, display_name, qty, list)
+      data = client.dividends(instrument_id: instrument_id, from: from_time, to: to_time)
+      dividends = data[:dividends] || data['dividends'] || []
+      dividends.each do |d|
+        next if d[:dividendType].to_s == 'Cancelled' || d['dividendType'].to_s == 'Cancelled'
+
+        payment_date = parse_timestamp(d[:paymentDate] || d['paymentDate'])
+        next if payment_date.nil? || payment_date < from_time
+
+        net = d[:dividendNet] || d['dividendNet'] || {}
+        amount = money_units(net) * qty
+        curr = (net[:currency] || net['currency'] || 'rub').to_s.upcase
+        list << {
+          date:       payment_date.strftime('%Y-%m-%d'),
+          name:       display_name,
+          ticker:     display_name,
+          type:       :dividend,
+          amount_str: format('%.2f %s', amount, curr == 'RUB' ? '₽' : curr),
+          quantity:   qty
+        }
+      end
+    end
+
+    def fetch_bond_coupons(instrument_id, from_time, to_time, display_name, qty, list)
+      data = client.bond_coupons(instrument_id: instrument_id, from: from_time, to: to_time)
+      events = data[:events] || data['events'] || []
+      events.each do |c|
+        coupon_date = parse_timestamp(c[:couponDate] || c['couponDate'])
+        next if coupon_date.nil? || coupon_date < from_time
+
+        pay_one = c[:payOneBond] || c['payOneBond'] || {}
+        amount = money_units(pay_one) * qty
+        curr = (pay_one[:currency] || pay_one['currency'] || 'rub').to_s.upcase
+        list << {
+          date:       coupon_date.strftime('%Y-%m-%d'),
+          name:       display_name,
+          ticker:     display_name,
+          type:       :coupon,
+          amount_str: format('%.2f %s', amount, curr == 'RUB' ? '₽' : curr),
+          quantity:   qty
+        }
+      end
+    end
+
+    def parse_timestamp(ts)
+      return nil unless ts
+
+      if ts.is_a?(String)
+        Time.parse(ts)
+      elsif ts.is_a?(Hash)
+        sec = ts[:seconds] || ts['seconds']&.to_i
+        nano = ts[:nanos] || ts['nanos']&.to_i || 0
+        sec ? Time.at(sec, nano, :nsec).utc : nil
+      end
+    end
+
+    def money_units(money)
+      return 0.to_d unless money.is_a?(Hash)
+
+      u = (money[:units] || money['units'] || 0).to_d
+      n = (money[:nano] || money['nanos'] || money['nano'] || 0).to_i
+      u + (n / 1e9)
+    end
+
     def symbol_by_ticker(ticker)
       pair = CURRENCIES.values.find { |c| c[:ticker] == ticker.to_s }
-      pair&.fetch(:symbol, nil) || '?'
+      return pair[:symbol] if pair
+
+      # Resolve from API Currencies (ticker may differ from CURRENCIES, e.g. GBPRUB_TOM_CETS)
+      iso = available_currencies_ticker_to_iso[ticker.to_s]
+      iso ? currency_symbol_for(iso) : '?'
+    end
+
+    def available_currencies_ticker_to_iso
+      @available_currencies_ticker_to_iso ||= available_currencies.each_with_object({}) do |(iso, data), memo|
+        t = data[:ticker] || data['ticker']
+        memo[t.to_s] = iso.to_s if t
+      end
     end
 
     def total_yield
@@ -301,7 +492,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       decorate_price(portfolio_data[:totalAmountCurrencies])
     end
 
-    def user_info_rows # rubocop:disable Metrics/AbcSize
+    def user_info_rows
       [
         [pastel.bold('User ID'), user_data[:userId]],
         [pastel.bold('Premium status'), user_data[:premStatus] ? '✅' : '❌'],
@@ -311,7 +502,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       ]
     end
 
-    def account_rows # rubocop:disable Metrics/AbcSize
+    def account_rows
       [
         [pastel.bold('Account ID'), account_data[:id]],
         [pastel.bold('Type'), account_data[:type]],
