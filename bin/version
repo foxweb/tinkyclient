@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require 'bundler/setup'
+require_relative '../lib/tinky'
+puts Tinky::VERSION

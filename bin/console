@@ -16,6 +16,14 @@ Tinky.define_singleton_method(:help) do
       restore_tty     — восстановить терминал после watch_portfolio
       wallet          — показать кошелёк (баланс валют)
 
+    Отдельные секции (bin/: portfolio-positions, summary, future-payments, user-info, account):
+
+      print_portfolio_section       — только таблица позиций
+      print_summary_section         — сводка по суммам
+      print_future_payments_section — будущие выплаты
+      print_user_info_section       — данные пользователя
+      print_account_section         — данные счёта
+
     Данные и отладка:
 
       positions            — сырые позиции портфеля

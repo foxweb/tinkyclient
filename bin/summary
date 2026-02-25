@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+require 'bundler/setup'
+require_relative '../lib/tinky'
+Tinky.print_summary_section
+Tinky.print_timestamp

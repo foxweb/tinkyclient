@@ -4,6 +4,7 @@ require 'bigdecimal/util'
 require 'tty/table'
 require 'pry'
 require 'awesome_print'
+require './lib/tinky/version'
 require './lib/tinky/client'
 require './lib/tinky/client_error'
 
@@ -38,23 +39,11 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
   class << self # rubocop:disable Metrics/ClassLength
     def portfolio
-      puts "\nPortfolio:"
-      puts portfolio_table(positions)
-      puts
-      puts "❌ - ticker is blocked for trading\n"
-
-      puts "\nTotal amount summary:"
-      puts summary_table(summary_data.values)
-
-      puts "\nFuture payments (dividends & coupons):"
-      puts future_payments_table
-
-      puts "\nUser info:"
-      puts user_info_table
-
-      puts "\nAccount info:"
-      puts account_table
-
+      print_portfolio_section
+      print_summary_section
+      print_future_payments_section
+      print_user_info_section
+      print_account_section
       print_timestamp
     end
 
@@ -82,10 +71,48 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def wallet
-      puts "\nWallet:"
+      puts
+      puts 'Wallet:'
       puts wallet_table(currency_positions)
 
       print_timestamp
+    end
+
+    def print_timestamp
+      puts
+      puts "Last updated: #{Time.now}\n\n"
+    end
+
+    def print_portfolio_section
+      puts
+      puts 'Portfolio:'
+      puts portfolio_table(positions)
+      puts
+      puts "❌ - ticker is blocked for trading\n"
+    end
+
+    def print_summary_section
+      puts
+      puts 'Total amount summary:'
+      puts summary_table(summary_data.values)
+    end
+
+    def print_future_payments_section
+      puts
+      puts 'Future payments (dividends & coupons):'
+      puts future_payments_table
+    end
+
+    def print_user_info_section
+      puts
+      puts 'User info:'
+      puts user_info_table
+    end
+
+    def print_account_section
+      puts
+      puts 'Account info:'
+      puts account_table
     end
 
     def portfolio_table(items)
@@ -304,10 +331,6 @@ module Tinky # rubocop:disable Metrics/ModuleLength
 
       key = currency_code.to_s.downcase.to_sym
       CURRENCIES.dig(key, :symbol) || currency_code.to_s.upcase
-    end
-
-    def print_timestamp
-      puts "\nLast updated: #{Time.now}\n\n"
     end
 
     def positions
