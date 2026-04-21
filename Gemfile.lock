@@ -1,3 +1,13 @@
+GIT
+  remote: git@github.com:foxweb/tty-table.git
+  revision: 171ebca4239a574b01e364f686ae60b83f155764
+  branch: separator_bug
+  specs:
+    tty-table (0.12.0)
+      pastel (~> 0.8)
+      strings (~> 0.2.0)
+      tty-screen (~> 0.8)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -71,10 +81,6 @@ GEM
     strings-ansi (0.2.0)
     tty-color (0.6.0)
     tty-screen (0.8.2)
-    tty-table (0.12.0)
-      pastel (~> 0.8)
-      strings (~> 0.2.0)
-      tty-screen (~> 0.8)
     unicode-display_width (2.6.0)
     unicode_utils (1.4.0)
 
@@ -90,7 +96,7 @@ DEPENDENCIES
   faraday_middleware-parse_oj
   rubocop
   rubocop-performance
-  tty-table
+  tty-table!
 
 BUNDLED WITH
   4.0.3
