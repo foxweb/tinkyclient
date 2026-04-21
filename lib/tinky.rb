@@ -42,8 +42,6 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       print_portfolio_section
       print_summary_section
       print_future_payments_section
-      print_user_info_section
-      print_account_section
       print_timestamp
     end
 
@@ -373,9 +371,14 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table = TTY::Table.new(
         header: %w[Date Instrument Type Amount Qty]
       )
-      items.each do |item|
+      month_totals = Hash.new { |h, k| h[k] = Hash.new(0.to_d) }
+      items.each_with_index do |item, index|
         name = (item[:name] || item[:ticker]).to_s
         name = "#{name[0..46]}…" if name.length > 47
+        month_key = item[:date].to_s[0, 7]
+        amount_value, amount_currency = parse_amount_with_currency(item[:amount_str])
+        month_totals[month_key][amount_currency] += amount_value
+
         table << [
           item[:date],
           name,
@@ -383,8 +386,42 @@ module Tinky # rubocop:disable Metrics/ModuleLength
           item[:amount_str],
           { value: item[:quantity].to_s, alignment: :right }
         ]
+
+        next_item = items[index + 1]
+        next_month_key = next_item&.dig(:date).to_s[0, 7]
+        next if next_month_key == month_key
+
+        table << [
+          month_key,
+          '',
+          '',
+          highlight_month_total(format_month_total(month_totals[month_key])),
+          { value: '', alignment: :right }
+        ]
+        table << month_separator_row
       end
       table.render(:unicode, padding: [0, 1, 0, 1])
+    end
+
+    def parse_amount_with_currency(value)
+      amount_str, currency = value.to_s.strip.split(/\s+/, 2)
+      [amount_str.to_d, currency.to_s]
+    end
+
+    def format_month_total(currency_totals)
+      currency_totals
+        .sort_by { |currency, _| currency }
+        .reject { |_, amount| amount.to_d.zero? }
+        .map { |currency, amount| format('%.2f %s', amount, currency) }
+        .join(', ')
+    end
+
+    def month_separator_row
+      ['', '', '', '', '']
+    end
+
+    def highlight_month_total(value)
+      pastel.decorate(value, :bright_green, :bold)
     end
 
     def future_payments
