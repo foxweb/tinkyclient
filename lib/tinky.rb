@@ -431,7 +431,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     def build_future_payments
       instrument_names # preload names so we have them for payments
       from_time = Time.now.utc
-      to_time = from_time + (90 * 24 * 3600)
+      to_time = Time.utc(from_time.year, 12, 31, 23, 59, 59)
       list = []
       securities = positions.reject { |p| p[:instrumentType].to_s == 'currency' }
       securities.each do |pos|
