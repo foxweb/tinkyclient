@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-04-21
+
+### Added
+
+- **Future payments: monthly subtotal row** — Added an intermediate monthly subtotal in `future_payments_table`. After the last payment in each month, the table now prints a subtotal for that month.
+
+### Changed
+
+- **Future payments: subtotal formatting** — Monthly subtotal amount is highlighted in bright green (`bold`) for better visual scanning.
+- **Future payments: section spacing** — Added an empty separator row after each monthly subtotal row to visually split month sections.
+- **Future payments: cleaner totals** — Zero-value chunks (`0.00`) are filtered out from monthly subtotal output.
+
 ## [0.1.0] - 2025-02-25
 
 ### Added
