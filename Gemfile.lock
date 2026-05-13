@@ -28,7 +28,7 @@ GEM
       faraday_middleware (>= 0.9.1, < 1.0)
       oj (>= 2.0, < 4.0)
     io-console (0.8.2)
-    json (2.19.4)
+    json (2.19.5)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     method_source (1.1.0)
@@ -94,6 +94,7 @@ DEPENDENCIES
   faraday
   faraday_middleware
   faraday_middleware-parse_oj
+  json (>= 2.19.2)
   rubocop
   rubocop-performance
   tty-table!

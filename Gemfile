@@ -1,5 +1,7 @@
 source 'https://rubygems.org'
 
+gem 'json', '>= 2.19.2' # CVE-2026-33210 (GHSA-3m6g-2423-7cp3)
+
 gem 'awesome_pry'
 gem 'dotenv'
 gem 'faraday'
