@@ -114,16 +114,22 @@ module Tinky # rubocop:disable Metrics/ModuleLength
     end
 
     def portfolio_table(items)
-      prev_type = items.first[:instrumentType]
+      sorted_items = items.sort_by do |item|
+        [item[:instrumentType].to_s, (item[:name] || item[:ticker]).to_s]
+      end
+      return '' if sorted_items.empty?
+
+      prev_type = sorted_items.first[:instrumentType]
 
       table = TTY::Table.new(
         header: ['Type', 'Name', 'Amount', 'Avg. buy', 'Current price', 'Buy sum', 'Current sum',
                  'Yield', 'Yield %', 'Daily %']
       )
+      table << :separator
 
-      items.each do |item|
+      sorted_items.each do |item|
         # BUG: separator line isn't working according github issue: https://github.com/piotrmurach/tty-table/issues/31
-        # table << :separator if item[:instrumentType] != prev_type
+        table << :separator if item[:instrumentType] != prev_type
         table << row_data(item)
         prev_type = item[:instrumentType]
       end
@@ -371,6 +377,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
       table = TTY::Table.new(
         header: %w[Date Instrument Type Amount Qty]
       )
+      table << :separator
       month_totals = Hash.new { |h, k| h[k] = Hash.new(0.to_d) }
       items.each_with_index do |item, index|
         name = (item[:name] || item[:ticker]).to_s
@@ -398,7 +405,7 @@ module Tinky # rubocop:disable Metrics/ModuleLength
           highlight_month_total(format_month_total(month_totals[month_key])),
           { value: '', alignment: :right }
         ]
-        table << month_separator_row
+        table << :separator
       end
       table.render(:unicode, padding: [0, 1, 0, 1])
     end
