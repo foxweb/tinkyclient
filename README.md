@@ -13,7 +13,7 @@
 # Быстрый старт
 
 Требования:
-- установленный [Ruby 4.0.4](https://www.ruby-lang.org/en/news/2026/05/11/ruby-4-0-4-released/) и новее
+- установленный [Ruby 4.0.5](https://www.ruby-lang.org/en/news/2026/05/20/ruby-4-0-5-released/) и новее
 - наличие [токена T-Инвестиции API](https://developer.tbank.ru/invest/intro/intro/token)
 - минимальный опыт работы в консоли Linux или MacOS.
 
